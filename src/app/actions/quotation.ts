@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getBranchConfig } from '@/lib/branches';
+import { getSession } from '@/lib/auth';
 
 export interface QuotationItemInput {
   itemType: string;
@@ -297,4 +298,63 @@ export async function updateProjectStatusAction(projectId: string, newStatus: st
     return { success: false, error: error.message };
   }
 }
+
+// 7. HARD DELETE ACTION (Hapus Permanen dari Database)
+export async function hardDeleteQuotationAction(projectId: string) {
+  try {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+      return { success: false, error: 'Hanya Admin yang memiliki hak menghapus proyek secara permanen.' };
+    }
+
+    // Eksekusi penghapusan tuntas relasi dan parent
+    await prisma.$transaction([
+      prisma.quotationItem.deleteMany({ where: { projectId } }),
+      prisma.projectExpense.deleteMany({ where: { projectId } }),
+      prisma.installationSchedule.deleteMany({ where: { projectId } }),
+      prisma.project.delete({ where: { id: projectId } }),
+    ]);
+
+    revalidatePath('/projects');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error hard deleting project:', error);
+    return { success: false, error: error.message || 'Gagal menghapus proyek secara permanen.' };
+  }
+}
+
+// 8. EMPTY TRASH ACTION (Kosongkan Semua Data di Tempat Sampah)
+export async function emptyTrashAction() {
+  try {
+    const session = await getSession();
+    if (session?.role !== 'admin') {
+      return { success: false, error: 'Hanya Admin yang memiliki hak mengosongkan tempat sampah.' };
+    }
+
+    const trashProjects = await prisma.project.findMany({
+      where: { deletedAt: { not: null } },
+      select: { id: true },
+    });
+
+    const projectIds = trashProjects.map((p) => p.id);
+
+    if (projectIds.length > 0) {
+      await prisma.$transaction([
+        prisma.quotationItem.deleteMany({ where: { projectId: { in: projectIds } } }),
+        prisma.projectExpense.deleteMany({ where: { projectId: { in: projectIds } } }),
+        prisma.installationSchedule.deleteMany({ where: { projectId: { in: projectIds } } }),
+        prisma.project.deleteMany({ where: { id: { in: projectIds } } }),
+      ]);
+    }
+
+    revalidatePath('/projects');
+    revalidatePath('/dashboard');
+    return { success: true, count: projectIds.length };
+  } catch (error: any) {
+    console.error('Error emptying trash:', error);
+    return { success: false, error: error.message || 'Gagal mengosongkan tempat sampah.' };
+  }
+}
+
 

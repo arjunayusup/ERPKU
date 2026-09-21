@@ -966,22 +966,6 @@ function CalculatorContent() {
                     <span className="text-[10px] text-slate-400 block mt-0.5">Otomatis dari teks di atas</span>
                   </div>
                 </div>
-                <div>
-                  <label className="block font-medium text-slate-500 mb-1">
-                    Estimasi Bentang Dinding Lapangan (cm) <span className="font-normal text-slate-400">[Opsional]</span>:
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={modalLengthCm || ''}
-                    onChange={(e) => setModalLengthCm(Number(e.target.value))}
-                    placeholder="Contoh: 300 (bentangan dinding)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 text-xs"
-                  />
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    *Hanya catatan bentangan fisik dinding lokasi (opsional), tidak dihitung sebagai ukuran tinggi per huruf.
-                  </span>
-                </div>
               </div>
             )}
 

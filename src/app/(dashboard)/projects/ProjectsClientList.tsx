@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   FolderKanban, 
   Plus, 
@@ -15,9 +16,20 @@ import {
   RotateCcw,
   Search,
   Filter,
-  Edit3
+  Edit3,
+  Loader2,
+  AlertTriangle,
+  Calendar,
+  Zap,
+  X
 } from 'lucide-react';
-import { deleteQuotationAction, restoreQuotationAction } from '@/app/actions/quotation';
+import { 
+  deleteQuotationAction, 
+  restoreQuotationAction, 
+  hardDeleteQuotationAction, 
+  emptyTrashAction 
+} from '@/app/actions/quotation';
+import { updateProjectStatusAction, upsertInstallationScheduleAction } from '@/app/actions/project';
 
 interface ProjectsClientListProps {
   initialProjects: any[];
@@ -28,17 +40,150 @@ export default function ProjectsClientList({
   initialProjects,
   isAdmin,
 }: ProjectsClientListProps) {
+  const router = useRouter();
+  const [projects, setProjects] = useState<any[]>(initialProjects);
   const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+
+  // Quick Action Modal States (Status & Schedule)
+  const [schedulingProject, setSchedulingProject] = useState<any | null>(null);
+  const [updatingStatusProject, setUpdatingStatusProject] = useState<any | null>(null);
+  const [modalSelectedStatus, setModalSelectedStatus] = useState('in_production');
+  const [modalDate, setModalDate] = useState(new Date().toISOString().split('T')[0]);
+  const [modalTimeSlot, setModalTimeSlot] = useState('09:00 - 14:00 (Pagi-Siang)');
+  const [modalTeam, setModalTeam] = useState('Tim 1 (Kang Asep) - Pikap B 9147 TPA');
+
+  const openScheduleModal = (p: any) => {
+    setSchedulingProject(p);
+    const existing = p.installations?.[0];
+    setModalDate(existing?.date || new Date().toISOString().split('T')[0]);
+    setModalTimeSlot(existing?.timeSlot || '09:00 - 14:00 (Pagi-Siang)');
+    setModalTeam(existing?.teamName || 'Tim 1 (Kang Asep) - Pikap B 9147 TPA');
+  };
+
+  const openStatusModal = (p: any) => {
+    setUpdatingStatusProject(p);
+    setModalSelectedStatus(p.status || 'in_production');
+  };
+
+  const handleSaveModalStatus = async () => {
+    if (!updatingStatusProject) return;
+    setIsProcessing('modal_status');
+    const res = await updateProjectStatusAction(updatingStatusProject.id, modalSelectedStatus);
+    setIsProcessing(null);
+    if (res.success) {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === updatingStatusProject.id ? { ...p, status: modalSelectedStatus } : p))
+      );
+      setUpdatingStatusProject(null);
+      router.refresh();
+    } else {
+      alert(res.error || 'Gagal mengubah status.');
+    }
+  };
+
+  const handleSaveModalSchedule = async () => {
+    if (!schedulingProject) return;
+    setIsProcessing('modal_schedule');
+    const res = await upsertInstallationScheduleAction({
+      projectId: schedulingProject.id,
+      date: modalDate,
+      timeSlot: modalTimeSlot,
+      teamName: modalTeam,
+    });
+    setIsProcessing(null);
+    if (res.success) {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === schedulingProject.id
+            ? {
+                ...p,
+                status: p.status === 'draft' || p.status === 'in_production' ? 'ready_install' : p.status,
+                installations: [{ date: modalDate, timeSlot: modalTimeSlot, teamName: modalTeam }],
+              }
+            : p
+        )
+      );
+      setSchedulingProject(null);
+      router.refresh();
+    } else {
+      alert(res.error || 'Gagal menyimpan jadwal.');
+    }
+  };
+
+  useEffect(() => {
+    setProjects(initialProjects);
+  }, [initialProjects]);
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
+  // 1. Soft Delete (Pindah ke Sampah)
+  const handleSoftDelete = async (id: string, projectNumber: string) => {
+    if (!confirm(`Pindahkan penawaran ${projectNumber} ke tempat sampah?`)) return;
+    setIsProcessing(id);
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, deletedAt: new Date().toISOString() } : p)));
+    const res = await deleteQuotationAction(id);
+    setIsProcessing(null);
+    if (!res.success) {
+      alert(res.error || 'Gagal memindahkan penawaran ke tempat sampah.');
+    }
+    router.refresh();
+  };
+
+  // 2. Restore (Pulihkan dari Sampah)
+  const handleRestore = async (id: string) => {
+    setIsProcessing(id);
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, deletedAt: null } : p)));
+    const res = await restoreQuotationAction(id);
+    setIsProcessing(null);
+    if (!res.success) {
+      alert(res.error || 'Gagal memulihkan proyek.');
+    }
+    router.refresh();
+  };
+
+  // 3. Hard Delete (Hapus Permanen dari Database)
+  const handleHardDelete = async (id: string, projectNumber: string, title: string) => {
+    const confirmed = confirm(
+      `⚠️ PERINGATAN HAPUS PERMANEN!\n\nProyek "${projectNumber} - ${title}" akan DIHAPUS BENERAN dari database beserta seluruh item reklame, pengeluaran & jadwal pasangnya.\n\nData yang dihapus TIDAK BISA DIKEMBALIKAN LAGI.\n\nApakah Anda yakin ingin menghapus permanen?`
+    );
+    if (!confirmed) return;
+
+    setIsProcessing(id);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    const res = await hardDeleteQuotationAction(id);
+    setIsProcessing(null);
+    if (!res.success) {
+      alert(res.error || 'Gagal menghapus proyek secara permanen.');
+    }
+    router.refresh();
+  };
+
+  // 4. Empty Trash (Kosongkan Semua Data Sampah)
+  const handleEmptyTrash = async () => {
+    if (trashCount === 0) return;
+    const confirmed = confirm(
+      `⚠️ PERINGATAN KOSONGKAN TEMPAT SAMPAH!\n\nSeluruh ${trashCount} proyek di tempat sampah akan DIHAPUS PERMANEN secara total dari database.\n\nSemua data item reklame dan riwayatnya akan hilang selamanya dan TIDAK BISA DIKEMBALIKAN.\n\nApakah Anda yakin ingin mengosongkan tempat sampah?`
+    );
+    if (!confirmed) return;
+
+    setIsProcessing('empty_trash');
+    setProjects((prev) => prev.filter((p) => p.deletedAt === null));
+    const res = await emptyTrashAction();
+    setIsProcessing(null);
+    if (!res.success) {
+      alert(res.error || 'Gagal mengosongkan tempat sampah.');
+    }
+    router.refresh();
+  };
+
   // Filter projects by tab, branch, and search query
   const filteredProjects = useMemo(() => {
-    return initialProjects.filter((p) => {
+    return projects.filter((p) => {
       // 1. Tab filter (Active vs Trash)
       const isDeleted = p.deletedAt !== null;
       if (activeTab === 'active' && isDeleted) return false;
@@ -61,10 +206,10 @@ export default function ProjectsClientList({
 
       return true;
     });
-  }, [initialProjects, activeTab, selectedBranch, searchQuery]);
+  }, [projects, activeTab, selectedBranch, searchQuery]);
 
-  const activeCount = initialProjects.filter((p) => p.deletedAt === null).length;
-  const trashCount = initialProjects.filter((p) => p.deletedAt !== null).length;
+  const activeCount = projects.filter((p) => p.deletedAt === null).length;
+  const trashCount = projects.filter((p) => p.deletedAt !== null).length;
 
   return (
     <div className="space-y-5">
@@ -97,7 +242,7 @@ export default function ProjectsClientList({
           </button>
         </div>
 
-        {/* Branch Filter & Search Input */}
+        {/* Right Controls: Branch Filter, Search & Kosongkan Sampah */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Branch Filter */}
           <select
@@ -122,6 +267,24 @@ export default function ProjectsClientList({
               className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
+
+          {/* Tombol Kosongkan Sampah (Muncul khusus saat di tab Sampah jika ada isinya) */}
+          {activeTab === 'trash' && trashCount > 0 && isAdmin && (
+            <button
+              type="button"
+              onClick={handleEmptyTrash}
+              disabled={isProcessing === 'empty_trash'}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+              title="Hapus seluruh proyek di sampah secara permanen"
+            >
+              {isProcessing === 'empty_trash' ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              <span>Kosongkan Sampah ({trashCount})</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -129,7 +292,11 @@ export default function ProjectsClientList({
       {filteredProjects.length === 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400 text-xs">
           <FolderKanban className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="font-bold text-slate-600">Tidak ada data penawaran yang sesuai.</p>
+          <p className="font-bold text-slate-600">
+            {activeTab === 'trash'
+              ? 'Tempat sampah kosong. Tidak ada proyek yang terhapus.'
+              : 'Tidak ada data penawaran yang sesuai.'}
+          </p>
         </div>
       )}
 
@@ -203,46 +370,39 @@ export default function ProjectsClientList({
                 {activeTab === 'active' ? (
                   <>
                     <div className="flex items-center gap-1.5">
-                      <a
-                        href={`/documents/${p.id}/quotation`}
-                        target="_blank"
-                        title="Surat Penawaran"
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-300 text-[11px] font-bold"
+                      <button
+                        type="button"
+                        onClick={() => openStatusModal(p)}
+                        className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                        title="Update Status Progres"
                       >
-                        Quo
-                      </a>
-                      <a
-                        href={`/documents/${p.id}/spk`}
-                        target="_blank"
-                        title="SPK Bengkel"
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold"
+                        <Zap className="w-3 h-3 text-amber-600" />
+                        <span>Status</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openScheduleModal(p)}
+                        className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                        title="Atur Jadwal Pemasangan"
                       >
-                        SPK
-                      </a>
-                      <a
-                        href={`/documents/${p.id}/bast`}
-                        target="_blank"
-                        title="BAST Serah Terima"
-                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold"
-                      >
-                        BAST
-                      </a>
+                        <Calendar className="w-3 h-3 text-indigo-600" />
+                        <span>Jadwal</span>
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       {isAdmin && (
                         <a
                           href={`/calculator?edit=${p.id}`}
-                          className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1"
                           title="Edit Penawaran"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
                         </a>
                       )}
                       <a
                         href={`/projects/${p.id}`}
-                        className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center gap-1"
                       >
                         <span>Detail</span>
                         <ArrowRight className="w-3 h-3" />
@@ -250,32 +410,44 @@ export default function ProjectsClientList({
                       {isAdmin && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (confirm(`Pindahkan penawaran ${p.projectNumber} ke tempat sampah?`)) {
-                              await deleteQuotationAction(p.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                          title="Hapus Penawaran (Soft Delete)"
+                          onClick={() => handleSoftDelete(p.id, p.projectNumber)}
+                          disabled={isProcessing === p.id}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                          title="Pindahkan ke Tempat Sampah"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {isProcessing === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       )}
                     </div>
                   </>
                 ) : (
-                  <div className="w-full flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400 italic">Terhapus di tempat sampah</span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await restoreQuotationAction(p.id);
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Pulihkan / Restore</span>
-                    </button>
+                  <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                    <span className="text-[11px] text-slate-400 italic flex items-center gap-1">
+                      <Trash2 className="w-3 h-3 text-slate-400" /> Terhapus di tempat sampah
+                    </span>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(p.id)}
+                        disabled={isProcessing === p.id}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                      >
+                        {isProcessing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                        <span>Pulihkan</span>
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleHardDelete(p.id, p.projectNumber, p.title)}
+                          disabled={isProcessing === p.id}
+                          className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                          title="Hapus Permanen dari Database"
+                        >
+                          {isProcessing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          <span>Hapus Permanen</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -340,6 +512,26 @@ export default function ProjectsClientList({
                     <div className="flex items-center justify-end gap-1.5">
                       {activeTab === 'active' ? (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => openStatusModal(p)}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Update Status Progres"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Status</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openScheduleModal(p)}
+                            className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Atur Jadwal Pemasangan"
+                          >
+                            <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Jadwal</span>
+                          </button>
+
                           <a
                             href={`/documents/${p.id}/quotation`}
                             target="_blank"
@@ -348,15 +540,17 @@ export default function ProjectsClientList({
                           >
                             <FileText className="w-4 h-4" />
                           </a>
+
                           {isAdmin && (
                             <a
                               href={`/calculator?edit=${p.id}`}
                               title="Edit Penawaran Proyek"
-                              className="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition"
+                              className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition"
                             >
                               <Edit3 className="w-4 h-4" />
                             </a>
                           )}
+
                           <a
                             href={`/projects/${p.id}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition"
@@ -364,32 +558,44 @@ export default function ProjectsClientList({
                             <span>Detail</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </a>
+
                           {isAdmin && (
                             <button
                               type="button"
-                              onClick={async () => {
-                                if (confirm(`Pindahkan penawaran ${p.projectNumber} ke tempat sampah?`)) {
-                                  await deleteQuotationAction(p.id);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Hapus (Soft Delete)"
+                              onClick={() => handleSoftDelete(p.id, p.projectNumber)}
+                              disabled={isProcessing === p.id}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                              title="Pindahkan ke Tempat Sampah"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              {isProcessing === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                             </button>
                           )}
                         </>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await restoreQuotationAction(p.id);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Pulihkan</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleRestore(p.id)}
+                            disabled={isProcessing === p.id}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                            title="Pulihkan ke Proyek Aktif"
+                          >
+                            {isProcessing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                            <span>Pulihkan</span>
+                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleHardDelete(p.id, p.projectNumber, p.title)}
+                              disabled={isProcessing === p.id}
+                              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                              title="Hapus Permanen Dari Database"
+                            >
+                              {isProcessing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              <span>Hapus Permanen</span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -399,6 +605,172 @@ export default function ProjectsClientList({
           </table>
         </div>
       </div>
+
+      {/* MODAL 1: UPDATE STATUS CEPAT */}
+      {updatingStatusProject && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-mono text-slate-400 font-bold">{updatingStatusProject.projectNumber}</span>
+                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  <span>Update Status Progres</span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpdatingStatusProject(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              {[
+                { key: 'draft', label: 'Penawaran', desc: 'Draft penawaran klien' },
+                { key: 'in_production', label: 'Pabrikasi Bengkel', desc: 'Pengerjaan frame, huruf & lampu di workshop' },
+                { key: 'ready_install', label: 'Siap Pasang', desc: 'Produk sudah selesai QC & siap diberangkatkan' },
+                { key: 'installing', label: 'Pemasangan Lapangan', desc: 'Tim sedang pasang di lokasi klien' },
+                { key: 'completed', label: 'Selesai & Lunas', desc: 'Pekerjaan beres, serah terima BAST & pelunasan' },
+              ].map((st) => (
+                <label
+                  key={st.key}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${
+                    modalSelectedStatus === st.key
+                      ? 'bg-amber-50 border-amber-400 font-bold text-amber-950'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="status_choice"
+                      value={st.key}
+                      checked={modalSelectedStatus === st.key}
+                      onChange={(e) => setModalSelectedStatus(e.target.value)}
+                      className="text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <div>{st.label}</div>
+                      <div className="text-[10px] text-slate-500 font-normal">{st.desc}</div>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+              <button
+                type="button"
+                onClick={() => setUpdatingStatusProject(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveModalStatus}
+                disabled={isProcessing === 'modal_status'}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              >
+                {isProcessing === 'modal_status' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Simpan Status</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: ATUR JADWAL CEPAT */}
+      {schedulingProject && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-mono text-slate-400 font-bold">{schedulingProject.projectNumber}</span>
+                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  <span>Atur Jadwal Pemasangan</span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSchedulingProject(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700">
+                <span className="font-bold text-slate-900 block">{schedulingProject.title}</span>
+                <span className="text-[11px] text-slate-500">Klien: {schedulingProject.clientName} ({schedulingProject.clientPhone})</span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tanggal Pasang:</label>
+                <input
+                  type="date"
+                  value={modalDate}
+                  onChange={(e) => setModalDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Slot Waktu:</label>
+                <select
+                  value={modalTimeSlot}
+                  onChange={(e) => setModalTimeSlot(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                >
+                  <option value="09:00 - 14:00 (Pagi-Siang)">09:00 - 14:00 WIB (Pagi - Siang)</option>
+                  <option value="13:00 - 18:00 (Siang-Sore)">13:00 - 18:00 WIB (Siang - Sore)</option>
+                  <option value="21:00 - 04:00 (Malam Mall/Ruko)">21:00 - 04:00 WIB (Malam Mall / Ruko)</option>
+                  <option value="Fleksibel Sesuai Izin Gedung">Fleksibel Sesuai Izin Gedung</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tim Armada & Teknisi:</label>
+                <select
+                  value={modalTeam}
+                  onChange={(e) => setModalTeam(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                >
+                  <option value="Tim 1 (Kang Asep) - Pikap B 9147 TPA">Tim 1 (Kang Asep) — Pikap B 9147 TPA</option>
+                  <option value="Tim 2 (Pak Joko) - Pikap D 8231 ZB">Tim 2 (Pak Joko) — Pikap D 8231 ZB</option>
+                  <option value="Tim 3 (Kang Ujang) - Pikap B 9822 KLA">Tim 3 (Kang Ujang) — Pikap B 9822 KLA</option>
+                  <option value="Tim Mandiri Lapangan (Mitra Khusus)">Tim Mandiri Lapangan (Mitra Khusus)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+              <button
+                type="button"
+                onClick={() => setSchedulingProject(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveModalSchedule}
+                disabled={isProcessing === 'modal_schedule'}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              >
+                {isProcessing === 'modal_schedule' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Simpan Jadwal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

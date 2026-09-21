@@ -196,11 +196,6 @@ export default async function DocumentPage({
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-center font-medium">
                           <span className="font-bold text-slate-900">{formatItemSizeClean(item)}</span>
-                          {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
-                            <span className="block text-[10px] text-slate-500 font-normal">
-                              (Bentangan ±{item.widthCm} cm)
-                            </span>
-                          ) : null}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
                           <p>• {item.specifications || getMaterialDisplayLabel(item.material)}</p>
@@ -379,11 +374,6 @@ export default async function DocumentPage({
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-center font-bold">
                           <span className="font-black text-slate-900 text-xs">{formatItemSizeClean(item)}</span>
-                          {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
-                            <span className="block text-[10px] text-slate-600 font-medium mt-0.5">
-                              Bentang area: ±{item.widthCm} cm
-                            </span>
-                          ) : null}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
                           <p className="font-semibold text-slate-900">{getMaterialDisplayLabel(item.material)}</p>
@@ -494,11 +484,6 @@ export default async function DocumentPage({
                       <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">{item.description}</td>
                       <td className="p-2.5 border-r border-slate-900 text-center font-medium">
                         <span>{formatItemSizeClean(item)}</span>
-                        {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
-                          <span className="block text-[10px] text-slate-500 font-normal">
-                            (Bentangan ±{item.widthCm} cm)
-                          </span>
-                        ) : null}
                       </td>
                       <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Unit</td>
                       <td className="p-2.5 text-[11px] text-slate-700">

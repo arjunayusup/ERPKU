@@ -14,6 +14,7 @@ export default async function ProjectsPage() {
       include: {
         items: true,
         expenses: true,
+        installations: true,
       }
     });
   } catch (e) {

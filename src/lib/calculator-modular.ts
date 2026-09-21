@@ -623,8 +623,7 @@ export function formatItemDimensions(item: {
   if (item.itemType === 'huruf_timbul') {
     const chars = item.charCount || item.textOrLabel?.replace(/\s+/g, '').length || '';
     const charPart = chars ? ` (${chars} Huruf)` : '';
-    const spanPart = item.widthCm && item.widthCm > 0 ? ` • Bentangan ~${item.widthCm} cm` : '';
-    return `Tinggi ${item.heightCm || 0} cm${charPart}${spanPart}`;
+    return `Tinggi ${item.heightCm || 0} cm${charPart}`;
   }
   if (item.heightCm && item.widthCm) {
     return `${item.heightCm} x ${item.widthCm} cm`;
