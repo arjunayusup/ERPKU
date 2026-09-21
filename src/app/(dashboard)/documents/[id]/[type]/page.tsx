@@ -1,0 +1,605 @@
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
+import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import UniversalPrintHeader from '@/components/UniversalPrintHeader';
+import PrintButton from './PrintButton';
+import { getBranchConfig, getAllBranches } from '@/lib/branches';
+
+export default async function DocumentPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string; type: string };
+  searchParams?: { branch?: string; termin?: string };
+}) {
+  const session = await getSession();
+  const isAdmin = session?.role === 'admin';
+
+  const project = await prisma.project.findUnique({
+    where: { id: params.id },
+    include: {
+      items: true,
+      installations: true,
+      expenses: true,
+    },
+  });
+
+  if (!project) notFound();
+
+  // Branch Config
+  const branchId = searchParams?.branch || 'jakarta';
+  const branch = getBranchConfig(branchId);
+  const branches = getAllBranches();
+
+  // Proteksi jika akun bengkel mencoba buka Quotation atau Invoice
+  const isFinancialDoc = params.type === 'quotation' || params.type === 'invoice';
+  if (isFinancialDoc && !isAdmin) {
+    return (
+      <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl max-w-md mx-auto my-12 shadow-md">
+        <ShieldCheck className="w-12 h-12 text-rose-600 mx-auto mb-3" />
+        <h2 className="text-lg font-bold text-slate-900">Akses Dibatasi</h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Dokumen finansial penawaran dan invoice hanya dapat diakses oleh Akun Owner / Admin Salsabilla Advertising.
+        </p>
+      </div>
+    );
+  }
+
+  const formatRupiah = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+  };
+
+  const docType = params.type; // 'quotation', 'spk', 'surat_jalan', 'bast', 'invoice'
+
+  let docTitle = 'DOKUMEN RESMI';
+  if (docType === 'quotation') docTitle = 'SURAT PENAWARAN';
+  else if (docType === 'spk') docTitle = 'SPK BENGKEL / WORK ORDER';
+  else if (docType === 'surat_jalan') docTitle = 'SURAT JALAN PENGIRIMAN';
+  else if (docType === 'bast') docTitle = 'BERITA ACARA SERAH TERIMA';
+  else if (docType === 'invoice') docTitle = 'INVOICE TERMIN';
+
+  const displayDate = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  // Termin calculation
+  const terminType = searchParams?.termin || 'dp'; // 'dp' (50%) or 'pelunasan' (50%)
+  const isDP = terminType === 'dp';
+  const invoiceAmount = project.totalDeal * 0.5;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Action Bar (Hidden during Print) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print max-w-4xl mx-auto bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <a
+          href={`/projects/${project.id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-4 h-4" /> Kembali ke Detail Proyek
+        </a>
+
+        {/* Branch Switcher for Document */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">Pilih Cabang Dokumen:</label>
+          <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-50 text-xs">
+            {branches.map((b) => (
+              <a
+                key={b.id}
+                href={`/documents/${project.id}/${docType}?branch=${b.id}${searchParams?.termin ? `&termin=${searchParams.termin}` : ''}`}
+                className={`px-2.5 py-1 rounded-md font-bold transition ${
+                  b.id === branch.id
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {b.city}
+              </a>
+            ))}
+          </div>
+
+          <PrintButton />
+        </div>
+      </div>
+
+      {/* A4 Document Canvas */}
+      <div className="max-w-4xl mx-auto bg-white text-slate-900 p-10 md:p-12 shadow-xl border border-slate-200 print:border-none print:shadow-none print:p-0 min-h-[297mm]">
+        {/* Universal Print Header with Salsabilla Logo & Dynamic Branch Data */}
+        <UniversalPrintHeader
+          branchId={branch.id}
+          documentTitle={docTitle}
+          documentNumber={`${docType.toUpperCase()}-${project.projectNumber.replace('PRJ-', '')}`}
+          dateStr={displayDate}
+        />
+
+        {/* ========================================================================= */}
+        {/* 1. SURAT PENAWARAN (QUOTATION) - EXACT REPLICA OF OFFICIAL SALSABILLA FORMAT */}
+        {/* ========================================================================= */}
+        {docType === 'quotation' && (
+          <div className="space-y-5 text-xs leading-relaxed text-slate-800">
+            {/* Tujuan Surat */}
+            <div className="space-y-0.5">
+              <p className="font-bold text-slate-900">Kepada Yth.</p>
+              <p className="font-extrabold text-sm text-slate-900">{project.clientName}</p>
+              <p className="text-slate-700">Di Tempat</p>
+            </div>
+
+            {/* Pembuka */}
+            <div className="space-y-1">
+              <p className="font-semibold text-slate-900">Dengan Hormat,</p>
+              <p className="text-slate-700">
+                Menindaklanjuti permintaan Bapak/Ibu berkenaan dengan pekerjaan Signage, berikut kami ajukan penawaran harga dengan rincian sebagai berikut:
+              </p>
+            </div>
+
+            {/* Official Table: No | Description | Size | Specification | Qty | Unit Price | Total Price */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-slate-900">
+                <thead className="bg-slate-100 text-slate-900 uppercase font-bold border-b border-slate-900">
+                  <tr>
+                    <th className="p-2.5 border-r border-slate-900 w-10 text-center">No</th>
+                    <th className="p-2.5 border-r border-slate-900">Description</th>
+                    <th className="p-2.5 border-r border-slate-900 text-center">Size</th>
+                    <th className="p-2.5 border-r border-slate-900">Specification</th>
+                    <th className="p-2.5 border-r border-slate-900 w-12 text-center">Qty</th>
+                    <th className="p-2.5 border-r border-slate-900 text-right">Unit Price</th>
+                    <th className="p-2.5 text-right">Total Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-400">
+                  {project.items.map((item, idx) => (
+                    <tr key={item.id}>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
+                      <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
+                        {item.description}
+                      </td>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-medium">
+                        {item.heightCm} x {item.widthCm} cm
+                      </td>
+                      <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
+                        <p>• {item.material}</p>
+                        <p>• Lampu: {item.lighting === 'none' ? 'Non-LED' : `LED Modul + Trafo ${item.trafoWatt || 100}W`}</p>
+                      </td>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">1</td>
+                      <td className="p-2.5 border-r border-slate-900 text-right font-semibold">
+                        {formatRupiah(item.sellingPrice)}
+                      </td>
+                      <td className="p-2.5 text-right font-extrabold text-slate-900">
+                        {formatRupiah(item.sellingPrice)}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Board Rangka Item jika ada */}
+                  <tr>
+                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">{project.items.length + 1}</td>
+                    <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
+                      Jasa Instalasi Lapangan & Perkuatan Rangka
+                    </td>
+                    <td className="p-2.5 border-r border-slate-900 text-center font-medium">
+                      Area {branch.city}
+                    </td>
+                    <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
+                      <p>• Hollow galvanis perkuatan & dynabolt</p>
+                      <p>• Teknisi bersertifikat & uji coba kelistrikan</p>
+                    </td>
+                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Lot</td>
+                    <td className="p-2.5 border-r border-slate-900 text-right font-semibold text-slate-500">Include</td>
+                    <td className="p-2.5 text-right font-extrabold text-slate-900">Include</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-900 text-slate-900">
+                    <td colSpan={6} className="p-2.5 border-r border-slate-900 text-right uppercase tracking-wider">
+                      Sub Total
+                    </td>
+                    <td className="p-2.5 text-right text-sm">
+                      {formatRupiah(project.totalDeal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Term and Condition (Dynamic per Cabang & Editable) */}
+            <div className="pt-2 space-y-1.5 text-xs text-slate-800">
+              <p className="font-extrabold text-slate-900 uppercase tracking-wide">Term and Condition:</p>
+              <ul className="list-disc pl-5 space-y-0.5 text-slate-700">
+                {branch.defaultTerms.map((term, i) => (
+                  <li key={i}>{term}</li>
+                ))}
+                <li>
+                  Pembayaran ditransfer via rek <strong className="text-slate-900">{branch.bankName}: {branch.bankAccount}</strong> a.n <strong className="text-slate-900">{branch.bankAccountName}</strong>.
+                </li>
+              </ul>
+            </div>
+
+            {/* Penutup */}
+            <p className="text-slate-700 pt-1">
+              Demikian surat penawaran harga kami ajukan, atas perhatian dan kerjasamanya kami ucapkan terima kasih.
+            </p>
+
+            {/* Signature Area (Tanda Tangan Asli Pak Juju) */}
+            <div className="pt-4 flex justify-end">
+              <div className="text-center w-56">
+                <p className="text-slate-800 font-semibold">{branch.city}, {displayDate}</p>
+                <p className="text-slate-800 font-bold mb-1">Hormat Kami,</p>
+                <div className="h-20 flex items-center justify-center my-1">
+                  <img
+                    src={branch.signatureImage}
+                    alt="Tanda Tangan Juju Abdul Rohim"
+                    className="h-16 w-auto object-contain"
+                  />
+                </div>
+                <p className="font-extrabold text-slate-900 border-t border-slate-800 pt-1">
+                  ({branch.signerName})
+                </p>
+                <p className="text-[10px] text-slate-500">{branch.name}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 2. SPK BENGKEL / WORK ORDER (NO-PRICE) */}
+        {/* ========================================================================= */}
+        {docType === 'spk' && (
+          <div className="space-y-6 text-xs text-slate-800">
+            {/* Header Metadata */}
+            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-300">
+              <div>
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Nama Pemesan & Proyek:</p>
+                <p className="font-extrabold text-sm text-slate-900">{project.clientName} ({project.clientPhone})</p>
+                <p className="font-medium text-slate-700 mt-0.5">{project.title}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Lokasi: {project.installationAddress || '-'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Informasi Produksi:</p>
+                <p className="font-bold text-slate-900">Cabang: <span className="font-extrabold text-rose-600">{branch.name}</span></p>
+                <p className="text-slate-700 mt-0.5">Target Selesai: <strong className="text-slate-900">12 Hari Kerja</strong></p>
+                <p className="text-rose-600 font-bold text-[10px] mt-1 uppercase tracking-wider">
+                  ⚠️ DOKUMEN RAHASIA BENGKEL (TANPA NILAI HARGA)
+                </p>
+              </div>
+            </div>
+
+            {/* Technical BOM Table */}
+            <div>
+              <h3 className="font-extrabold text-slate-900 uppercase text-xs mb-2">
+                Daftar Kebutuhan Material & Spesifikasi Bengkel (BOM):
+              </h3>
+              <table className="w-full text-left text-xs border border-slate-900">
+                <thead className="bg-slate-100 text-slate-900 uppercase font-bold border-b border-slate-900">
+                  <tr>
+                    <th className="p-2.5 border-r border-slate-900 w-10 text-center">No</th>
+                    <th className="p-2.5 border-r border-slate-900">Item & Teks Huruf</th>
+                    <th className="p-2.5 border-r border-slate-900 text-center">Ukuran Bersih (P x L x T)</th>
+                    <th className="p-2.5 border-r border-slate-900">Spesifikasi Bahan & Finishing</th>
+                    <th className="p-2.5 text-center">Kelistrikan (LED & Trafo)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-400">
+                  {project.items.map((item, idx) => (
+                    <tr key={item.id}>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
+                      <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
+                        {item.description}
+                        {item.textOrLabel && (
+                          <div className="font-mono text-rose-600 font-bold text-[11px] mt-0.5">
+                            Teks: &quot;{item.textOrLabel}&quot;
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">
+                        {item.heightCm} x {item.widthCm} cm
+                      </td>
+                      <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
+                        <p className="font-semibold text-slate-900">{item.material}</p>
+                        <p className="text-slate-500 text-[10px]">Rangka: Hollow 4x4 Galvanis / Lis Profil</p>
+                      </td>
+                      <td className="p-2.5 text-center font-semibold text-slate-800">
+                        <p className="font-bold text-rose-600">{item.ledCount || 0} Modul LED</p>
+                        <p className="text-[10px] text-slate-600">Trafo: {item.trafoWatt || 100}W Rainproof</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Simple Wiring Diagram & Technical Notes */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3.5 border border-slate-300 rounded-lg bg-slate-50">
+                <h4 className="font-bold text-slate-900 text-[11px] uppercase mb-1.5">Diagram Wiring Kelistrikan LED:</h4>
+                <div className="bg-white border border-slate-300 p-2.5 rounded text-[10px] text-slate-700 space-y-1 font-mono">
+                  <p className="font-bold text-slate-900">[PLN 220V] ──► [MCB 6A / Timer]</p>
+                  <p className="pl-14">│</p>
+                  <p className="font-bold text-slate-900">               ▼</p>
+                  <p className="font-bold text-slate-900">      [TRAFO 12V RAINPROOF]</p>
+                  <p className="pl-14">│</p>
+                  <p className="font-bold text-rose-600">      ├─► Jalur 1 (Max 50 Modul LED Paralel)</p>
+                  <p className="font-bold text-rose-600">      └─► Jalur 2 (Max 50 Modul LED Paralel)</p>
+                </div>
+                <p className="text-[9.5px] text-slate-500 mt-1">
+                  *Wajib pasang paralel tiap 50 modul untuk mencegah voltage drop redup di ujung.
+                </p>
+              </div>
+
+              <div className="p-3.5 border border-slate-300 rounded-lg bg-slate-50 space-y-1">
+                <h4 className="font-bold text-slate-900 text-[11px] uppercase mb-1">Catatan Khusus Teknisi Bengkel:</h4>
+                <ul className="list-disc pl-4 text-[10.5px] text-slate-700 space-y-0.5">
+                  <li>Lakukan <strong>Burn-In Test</strong> menyala nonstop 12 jam sebelum dipacking peti kayu.</li>
+                  <li>Pastikan seal silicone neutral rapat di sisi atas untuk mencegah air hujan masuk ke modul LED.</li>
+                  <li>Dynabolt dan breket siku wajib disiapkan 1 set cadangan untuk tim instalasi lapangan.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Signature Area Bengkel */}
+            <div className="grid grid-cols-2 gap-8 text-center pt-6 border-t border-slate-300">
+              <div>
+                <p className="font-semibold text-slate-600 mb-14">Dibuat Oleh (Admin / Estimator),</p>
+                <p className="font-bold text-slate-900 uppercase">SALSABILLA ADVERTISING</p>
+                <p className="text-[10px] text-slate-500">Divisi Teknis & Gambar Kerja</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-600 mb-14">Diterima Oleh (Kepala Bengkel),</p>
+                <p className="font-bold text-slate-900 uppercase">(...................................................)</p>
+                <p className="text-[10px] text-slate-500">Mandor / Workshop Head</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 3. SURAT JALAN PENGIRIMAN */}
+        {/* ========================================================================= */}
+        {docType === 'surat_jalan' && (
+          <div className="space-y-6 text-xs text-slate-800">
+            {/* Header Surat Jalan */}
+            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-300">
+              <div>
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Tujuan Pengiriman / Customer:</p>
+                <p className="font-extrabold text-sm text-slate-900">{project.clientName}</p>
+                <p className="text-slate-700">{project.clientPhone}</p>
+                <p className="text-[11px] text-slate-600 mt-1">Alamat Tujuan: {project.installationAddress || 'Sesuai kesepakatan'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Armada & Pengemudi:</p>
+                <p className="font-bold text-slate-900">Kendaraan: <span className="font-mono text-rose-600">Mobil Pikap Gran Max</span></p>
+                <p className="text-slate-700">No. Polisi: <strong className="text-slate-900">B 9147 TPA</strong></p>
+                <p className="text-slate-700">Pengemudi: <strong className="text-slate-900">Kang Asep / Tim Ekspedisi</strong></p>
+              </div>
+            </div>
+
+            {/* Table Barang */}
+            <div>
+              <h3 className="font-extrabold text-slate-900 uppercase text-xs mb-2">Daftar Muatan & Unit Signage:</h3>
+              <table className="w-full text-left text-xs border border-slate-900">
+                <thead className="bg-slate-100 text-slate-900 uppercase font-bold border-b border-slate-900">
+                  <tr>
+                    <th className="p-2.5 border-r border-slate-900 w-10 text-center">No</th>
+                    <th className="p-2.5 border-r border-slate-900">Nama Barang / Unit Signage</th>
+                    <th className="p-2.5 border-r border-slate-900 text-center">Ukuran</th>
+                    <th className="p-2.5 border-r border-slate-900 text-center w-16">Qty</th>
+                    <th className="p-2.5">Kelengkapan & Aksesoris Terbawa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-400">
+                  {project.items.map((item, idx) => (
+                    <tr key={item.id}>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
+                      <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">{item.description}</td>
+                      <td className="p-2.5 border-r border-slate-900 text-center">{item.heightCm} x {item.widthCm} cm</td>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Unit</td>
+                      <td className="p-2.5 text-[11px] text-slate-700">
+                        Trafo Rainproof ({item.trafoWatt || 100}W), Dinabolt M10 (12 pcs), Breket Siku
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">{project.items.length + 1}</td>
+                    <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">Aksesoris Tambahan & Kabel</td>
+                    <td className="p-2.5 border-r border-slate-900 text-center">-</td>
+                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Set</td>
+                    <td className="p-2.5 text-[11px] text-slate-700">Kabel NYM 2x1.5 (25m), Sealant Silikon Bening, Steker Listrik</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-[11px] text-slate-600 italic">
+              *Barang telah diperiksa dalam kondisi lengkap, fisik mulus, dan siap untuk dipasang di lokasi.
+            </p>
+
+            {/* 3 Kolom Tanda Tangan: Pengirim | Pengemudi | Penerima */}
+            <div className="grid grid-cols-3 gap-4 text-center pt-8 border-t border-slate-300 text-xs">
+              <div>
+                <p className="font-semibold text-slate-600 mb-16">Pengirim (Gudang/Bengkel),</p>
+                <p className="font-bold text-slate-900 uppercase">SALSABILLA ADV</p>
+                <p className="text-[10px] text-slate-500">Stempel & TTD</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-600 mb-16">Pengemudi (Sopir),</p>
+                <p className="font-bold text-slate-900 uppercase">(...................................)</p>
+                <p className="text-[10px] text-slate-500">Nama Terang & HP</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-600 mb-16">Penerima (Klien / PIC Lokasi),</p>
+                <p className="font-bold text-slate-900 uppercase">({project.clientName})</p>
+                <p className="text-[10px] text-slate-500">Tanda Tangan Penerima</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. BAST (BERITA ACARA SERAH TERIMA) */}
+        {/* ========================================================================= */}
+        {docType === 'bast' && (
+          <div className="space-y-6 text-xs text-slate-800 leading-relaxed">
+            <div className="p-4 bg-slate-50 border border-slate-300 rounded-lg space-y-1">
+              <p>Pada hari ini, <strong className="text-slate-900">{displayDate}</strong>, telah dilakukan serah terima penyelesaian pekerjaan reklame antara:</p>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <p className="font-bold text-slate-900">Pihak Pertama (Pelaksana):</p>
+                  <p className="font-semibold text-rose-600">{branch.name}</p>
+                  <p className="text-slate-600">{branch.address}</p>
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900">Pihak Kedua (Pemesan/Klien):</p>
+                  <p className="font-semibold text-slate-900">{project.clientName}</p>
+                  <p className="text-slate-600">Lokasi: {project.installationAddress || '-'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist Serah Terima */}
+            <div>
+              <h3 className="font-extrabold text-slate-900 uppercase text-xs mb-2">Checklist Pemeriksaan Lapangan Bersama:</h3>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                  <span><strong>Kondisi Fisik:</strong> Rapi, presisi, tanpa goresan / cacat visual</span>
+                </div>
+                <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                  <span><strong>Kekuatan Struktur:</strong> Dynabolt & breket terpasang kokoh</span>
+                </div>
+                <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                  <span><strong>Uji Nyala Lampu:</strong> Seluruh modul LED menyala terang & merata</span>
+                </div>
+                <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                  <span><strong>Kebersihan Area:</strong> Sisa kabel & area kerja telah dibersihkan</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pernyataan Legal */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded text-slate-700 leading-normal">
+              <p className="font-bold text-slate-900 mb-0.5">Pernyataan:</p>
+              Pihak Kedua telah memeriksa dan menyatakan bahwa seluruh pekerjaan telah selesai dengan baik dan diterima 
+              sesuai pesanan. Dengan ditandatanganinya Berita Acara ini, masa garansi 1 (satu) tahun mulai berlaku dan penagihan sisa pembayaran dinyatakan sah.
+            </div>
+
+            {/* Dua Kolom TTD: Teknisi & Customer */}
+            <div className="grid grid-cols-2 gap-12 text-center pt-8 border-t border-slate-300">
+              <div>
+                <p className="font-semibold text-slate-600 mb-16">Pihak Pertama (Pelaksana Pekerjaan),</p>
+                <p className="font-bold text-slate-900 uppercase">SALSABILLA ADVERTISING</p>
+                <p className="text-[10px] text-slate-500">Teknisi / Pengawas Lapangan</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-600 mb-16">Pihak Kedua (Pemesan / Customer),</p>
+                <p className="font-bold text-slate-900 uppercase">{project.clientName}</p>
+                <p className="text-[10px] text-slate-500">Tanda Tangan Penerima</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 5. INVOICE TERMIN */}
+        {/* ========================================================================= */}
+        {docType === 'invoice' && (
+          <div className="space-y-6 text-xs text-slate-800">
+            {/* Metadata Invoice */}
+            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-300">
+              <div>
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Ditagihkan Kepada:</p>
+                <p className="font-extrabold text-sm text-slate-900">{project.clientName}</p>
+                <p className="text-slate-700">{project.clientPhone}</p>
+                <p className="text-slate-600 mt-0.5">{project.installationAddress || '-'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 font-bold uppercase text-[10px]">Referensi Dokumen:</p>
+                <p className="text-slate-700">No. Quotation: <strong className="text-slate-900">Q-{project.projectNumber.replace('PRJ-', '')}</strong></p>
+                <p className="text-slate-700">No. SPK: <strong className="text-slate-900">SPK-{project.projectNumber.replace('PRJ-', '')}</strong></p>
+                <span className="inline-block mt-1 px-2.5 py-0.5 rounded font-extrabold text-[10px] bg-rose-600 text-white uppercase">
+                  {isDP ? 'TERMIN 1: UANG MUKA (DP 50%)' : 'TERMIN 2: PELUNASAN (50%)'}
+                </span>
+              </div>
+            </div>
+
+            {/* Table Rincian Tagihan */}
+            <table className="w-full text-left text-xs border border-slate-900">
+              <thead className="bg-slate-100 text-slate-900 uppercase font-bold border-b border-slate-900">
+                <tr>
+                  <th className="p-3 border-r border-slate-900">Deskripsi Tagihan Pekerjaan</th>
+                  <th className="p-3 border-r border-slate-900 text-right w-36">Total Kontrak</th>
+                  <th className="p-3 border-r border-slate-900 text-right w-32">Persentase</th>
+                  <th className="p-3 text-right w-36">Jumlah Tagihan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-400">
+                <tr>
+                  <td className="p-3 border-r border-slate-900">
+                    <p className="font-bold text-slate-900">{project.title}</p>
+                    <p className="text-slate-600 text-[11px] mt-0.5">
+                      {isDP ? 'Pembayaran Uang Muka (DP) 50% untuk memulai pabrikasi bengkel.' : 'Pelunasan 50% setelah serah terima pekerjaan (BAST).'}
+                    </p>
+                  </td>
+                  <td className="p-3 border-r border-slate-900 text-right font-semibold">
+                    {formatRupiah(project.totalDeal)}
+                  </td>
+                  <td className="p-3 border-r border-slate-900 text-right font-bold text-rose-600">
+                    50%
+                  </td>
+                  <td className="p-3 text-right font-extrabold text-slate-900 text-sm">
+                    {formatRupiah(invoiceAmount)}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-900 text-slate-900">
+                  <td colSpan={3} className="p-3 border-r border-slate-900 text-right uppercase">
+                    Total Tagihan Saat Ini
+                  </td>
+                  <td className="p-3 text-right text-base text-rose-700">
+                    {formatRupiah(invoiceAmount)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            {/* Instruksi Transfer Bank Resmi Cabang */}
+            <div className="p-4 bg-slate-50 border border-slate-300 rounded-lg space-y-1">
+              <p className="font-extrabold text-slate-900 uppercase tracking-wide">Instruksi Pembayaran Transfer:</p>
+              <p className="text-slate-700">Pembayaran dapat ditransfer ke rekening resmi:</p>
+              <div className="font-mono text-xs pt-1 space-y-0.5">
+                <p>Bank: <strong className="text-slate-900 font-sans">{branch.bankName}</strong></p>
+                <p>No. Rekening: <strong className="text-rose-700 text-sm">{branch.bankAccount}</strong></p>
+                <p>Atas Nama: <strong className="text-slate-900 font-sans">{branch.bankAccountName}</strong></p>
+              </div>
+              <p className="text-[10.5px] text-slate-500 pt-1">
+                *Harap kirimkan bukti transfer via WhatsApp ke <strong>{branch.whatsapp.split('/')[0]}</strong> untuk verifikasi instan bagian Finance.
+              </p>
+            </div>
+
+            {/* Signature Area */}
+            <div className="pt-4 flex justify-end">
+              <div className="text-center w-56">
+                <p className="text-slate-800 font-semibold">{branch.city}, {displayDate}</p>
+                <p className="text-slate-800 font-bold mb-1">Hormat Kami,</p>
+                <div className="h-16 flex items-center justify-center my-1">
+                  <img
+                    src={branch.signatureImage}
+                    alt="Tanda Tangan Juju Abdul Rohim"
+                    className="h-14 w-auto object-contain"
+                  />
+                </div>
+                <p className="font-extrabold text-slate-900 border-t border-slate-800 pt-1">
+                  ({branch.signerName})
+                </p>
+                <p className="text-[10px] text-slate-500">{branch.name}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

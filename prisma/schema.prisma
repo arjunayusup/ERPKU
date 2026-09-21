@@ -1,0 +1,106 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("admin") // "admin", "workshop", "sales"
+  phone     String?
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  company   String?
+  phone     String
+  address   String?
+  createdAt DateTime @default(now())
+}
+
+model MaterialRate {
+  id            String   @id @default(uuid())
+  name          String
+  category      String   // "huruf_timbul", "neon_box", "led", "trafo"
+  unit          String   // "cm", "m2", "pcs"
+  costPrice     Float    // HPP / Modal
+  sellPrice     Float    // Harga Jual Acuan
+  notes         String?
+  updatedAt     DateTime @updatedAt
+}
+
+model Project {
+  id                  String               @id @default(uuid())
+  projectNumber       String               @unique // e.g. PRJ-202609-001
+  title               String
+  clientName          String
+  clientPhone         String
+  installationAddress String?
+  status              String               @default("draft") // draft, deal, in_production, ready_install, completed
+  totalHpp            Float                @default(0)
+  totalDeal           Float                @default(0)
+  totalExpenses       Float                @default(0)
+  realProfit          Float                @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  items               QuotationItem[]
+  expenses            ProjectExpense[]
+  installations       InstallationSchedule[]
+}
+
+model QuotationItem {
+  id           String   @id @default(uuid())
+  projectId    String
+  itemType     String   // "huruf_timbul", "neon_box", "custom"
+  description  String
+  textOrLabel  String?  // Teks Huruf (e.g. "KOPI KENANGAN")
+  charCount    Int?
+  heightCm     Float?
+  widthCm      Float?
+  material     String
+  lighting     String   // "none", "backlight", "frontlit"
+  ledCount     Int?
+  trafoWatt    Int?
+  hppPrice     Float    @default(0)
+  sellingPrice Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectExpense {
+  id          String   @id @default(uuid())
+  projectId   String
+  date        String
+  category    String   // "material_lokal", "bensin", "makan_lembur", "sewa_alat", "lainnya"
+  description String
+  amount      Float
+  receiptUrl  String?
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model InstallationSchedule {
+  id             String   @id @default(uuid())
+  projectId      String
+  date           String
+  timeSlot       String   // "09:00 - 13:00 (Pagi)", "22:00 - 04:00 (Malam Mall)"
+  teamName       String   // "Tim 1 (Kang Asep)", "Tim 2 (Pak Joko)"
+  toolsChecklist String   // JSON string of checklist items
+  status         String   @default("scheduled") // scheduled, on_the_way, installing, completed
+  bastSignature  String?  // Base64 digital signature
+  bastPhotos     String?  // JSON array of photo URLs
+  completedAt    DateTime?
+
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}

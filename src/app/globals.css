@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 15, 23, 42; /* #0f172a */
+  --background-rgb: 255, 255, 255; /* #ffffff */
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #ffffff;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Print Styles for A4 Documents (Clean Professional Layout) */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10.5pt;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .no-print, 
+  aside, 
+  nav, 
+  header, 
+  button {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
