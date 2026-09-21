@@ -18,7 +18,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { SALSABILLA_BRANCHES } from '@/lib/branches';
-import { getMaterialDisplayLabel, calculateLedModules } from '@/lib/calculator-modular';
+import { getMaterialDisplayLabel, calculateLedModules, formatItemDimensions } from '@/lib/calculator-modular';
 
 export default async function ProjectDetailPage({
   params,
@@ -200,7 +200,7 @@ export default async function ProjectDetailPage({
                     <div>
                       <span className="text-slate-500 block text-[10px]">Ukuran:</span>
                       <span className="font-bold text-slate-900">
-                        {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
+                        {formatItemDimensions(item)}
                       </span>
                     </div>
                     {ledInfo.isIlluminated ? (

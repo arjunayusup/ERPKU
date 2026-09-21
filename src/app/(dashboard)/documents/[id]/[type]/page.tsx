@@ -5,7 +5,7 @@ import { ShieldCheck, ArrowLeft } from 'lucide-react';
 import UniversalPrintHeader from '@/components/UniversalPrintHeader';
 import PrintButton from './PrintButton';
 import { getBranchConfig, getAllBranches } from '@/lib/branches';
-import { getMaterialDisplayLabel, calculateLedModules } from '@/lib/calculator-modular';
+import { getMaterialDisplayLabel, calculateLedModules, formatItemSizeClean } from '@/lib/calculator-modular';
 
 export default async function DocumentPage({
   params,
@@ -74,8 +74,11 @@ export default async function DocumentPage({
   // Smart Dynamic File Name
   // Format: [DOKUMEN] - [ITEM_SPEK] - [CLIENT_NAME] - Salsabilla
   const firstItem = project.items[0];
+  const sizeTag = firstItem?.itemType === 'huruf_timbul'
+    ? (firstItem.heightCm ? `T${firstItem.heightCm}cm` : '')
+    : (firstItem?.heightCm && firstItem?.widthCm ? `${firstItem.heightCm}x${firstItem.widthCm}cm` : firstItem?.heightCm ? `T${firstItem.heightCm}cm` : '');
   const itemSummary = firstItem 
-    ? `${firstItem.description.replace(/[^a-zA-Z0-9 ]/g, '')} ${firstItem.heightCm ? `${firstItem.heightCm}x${firstItem.widthCm}cm` : ''}`.trim()
+    ? `${firstItem.description.replace(/[^a-zA-Z0-9 ]/g, '')} ${sizeTag}`.trim()
     : project.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
   const cleanClient = project.clientName.replace(/[^a-zA-Z0-9 ]/g, '').trim();
   
@@ -192,7 +195,12 @@ export default async function DocumentPage({
                           )}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-center font-medium">
-                          {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
+                          <span className="font-bold text-slate-900">{formatItemSizeClean(item)}</span>
+                          {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
+                            <span className="block text-[10px] text-slate-500 font-normal">
+                              (Bentangan ±{item.widthCm} cm)
+                            </span>
+                          ) : null}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
                           <p>• {item.specifications || getMaterialDisplayLabel(item.material)}</p>
@@ -370,7 +378,12 @@ export default async function DocumentPage({
                           )}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-center font-bold">
-                          {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
+                          <span className="font-black text-slate-900 text-xs">{formatItemSizeClean(item)}</span>
+                          {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
+                            <span className="block text-[10px] text-slate-600 font-medium mt-0.5">
+                              Bentang area: ±{item.widthCm} cm
+                            </span>
+                          ) : null}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
                           <p className="font-semibold text-slate-900">{getMaterialDisplayLabel(item.material)}</p>
@@ -479,7 +492,14 @@ export default async function DocumentPage({
                     <tr key={item.id}>
                       <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
                       <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">{item.description}</td>
-                      <td className="p-2.5 border-r border-slate-900 text-center">{item.heightCm} x {item.widthCm} cm</td>
+                      <td className="p-2.5 border-r border-slate-900 text-center font-medium">
+                        <span>{formatItemSizeClean(item)}</span>
+                        {item.itemType === 'huruf_timbul' && item.widthCm && item.widthCm > 0 ? (
+                          <span className="block text-[10px] text-slate-500 font-normal">
+                            (Bentangan ±{item.widthCm} cm)
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Unit</td>
                       <td className="p-2.5 text-[11px] text-slate-700">
                         Trafo Rainproof ({item.trafoWatt || 100}W), Dinabolt M10 (12 pcs), Breket Siku

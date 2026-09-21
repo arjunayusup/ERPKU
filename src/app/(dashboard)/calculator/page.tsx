@@ -9,6 +9,8 @@ import {
   distributeNegotiatedTotal,
   generateWhatsAppQuoteText,
   getMaterialDisplayLabel,
+  formatItemDimensions,
+  formatItemSizeClean,
   ModularProductSpec,
   MultiItemLine
 } from '@/lib/calculator-modular';
@@ -59,13 +61,14 @@ function CalculatorContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  // State Form Modal Item
-  const [modalCategory, setModalCategory] = useState<'huruf_timbul' | 'neon_box' | 'papan_reklame' | 'tiang'>('huruf_timbul');
+  // State Form Modal Item (Hanya 3 Kategori Utama Reklame: Huruf Timbul, Neon Box, Billboard)
+  const [modalCategory, setModalCategory] = useState<'huruf_timbul' | 'neon_box' | 'papan_reklame'>('huruf_timbul');
   const [modalSubCategory, setModalSubCategory] = useState('stainless_biasa_led');
   const [modalText, setModalText] = useState('');
   const [modalCharCount, setModalCharCount] = useState(10);
   const [modalHeightCm, setModalHeightCm] = useState(20);
-  const [modalLengthCm, setModalLengthCm] = useState(100);
+  const [modalLengthCm, setModalLengthCm] = useState(0);
+  const [modalPoleType, setModalPoleType] = useState<'none' | 'pipa_2' | 'pipa_3' | 'pipa_4' | 'pipa_6' | 'rangka_hollow'>('none');
   const [modalPoleHeightMeter, setModalPoleHeightMeter] = useState(3);
   const [modalPondasi, setModalPondasi] = useState(false);
   const [modalPondasiPoints, setModalPondasiPoints] = useState(1);
@@ -105,7 +108,7 @@ function CalculatorContent() {
               itemType: it.itemType,
               description: it.description,
               specifications: it.specifications || '',
-              dimensions: it.heightCm && it.widthCm ? `${it.heightCm} x ${it.widthCm} cm` : it.heightCm ? `Tinggi ${it.heightCm} cm` : undefined,
+              dimensions: formatItemDimensions(it),
               textOrLabel: it.textOrLabel || '',
               charCount: it.charCount || undefined,
               heightCm: it.heightCm || undefined,
@@ -158,7 +161,7 @@ function CalculatorContent() {
   };
 
   // Switch Sub-Category in modal
-  const handleModalCategoryChange = (cat: 'huruf_timbul' | 'neon_box' | 'papan_reklame' | 'tiang') => {
+  const handleModalCategoryChange = (cat: 'huruf_timbul' | 'neon_box' | 'papan_reklame') => {
     setModalCategory(cat);
     if (cat === 'huruf_timbul') {
       setModalSubCategory('stainless_biasa_led');
@@ -166,20 +169,26 @@ function CalculatorContent() {
       setModalSubCategory('neon_box_2sisi');
       setModalLengthCm(100);
       setModalHeightCm(100);
-    } else if (cat === 'papan_reklame') {
+    } else {
       setModalSubCategory('reklame_flexi_korea');
       setModalLengthCm(300);
       setModalHeightCm(100);
-    } else {
-      setModalSubCategory('tiang_pipa_3');
-      setModalPoleHeightMeter(3);
     }
   };
 
   // Open Modal for New Item
   const handleOpenNewItem = () => {
     setEditingItemId(null);
+    setModalCategory('huruf_timbul');
+    setModalSubCategory('stainless_biasa_led');
     setModalText('');
+    setModalCharCount(10);
+    setModalHeightCm(20);
+    setModalLengthCm(0);
+    setModalPoleType('none');
+    setModalPoleHeightMeter(3);
+    setModalPondasi(false);
+    setModalPondasiPoints(1);
     setModalQuantity(1);
     setModalCustomDesc('');
     setIsModalOpen(true);
@@ -188,13 +197,17 @@ function CalculatorContent() {
   // Open Modal for Editing Item
   const handleOpenEditItem = (item: MultiItemLine) => {
     setEditingItemId(item.id);
-    const cat = (item.itemType as any) || 'huruf_timbul';
+    const cat = (item.itemType === 'tiang' ? 'papan_reklame' : (item.itemType as any)) || 'huruf_timbul';
     setModalCategory(cat);
     setModalSubCategory(item.material || 'stainless_biasa_led');
     setModalText(item.textOrLabel || '');
     setModalCharCount(item.charCount || 10);
     setModalHeightCm(item.heightCm || 20);
-    setModalLengthCm(item.widthCm || 100);
+    setModalLengthCm(cat === 'huruf_timbul' ? (item.widthCm || 0) : (item.widthCm || 100));
+    setModalPoleType('none');
+    setModalPoleHeightMeter(3);
+    setModalPondasi(false);
+    setModalPondasiPoints(1);
     setModalQuantity(item.quantity || 1);
     setModalCustomDesc(item.description || '');
     setIsModalOpen(true);
@@ -202,19 +215,22 @@ function CalculatorContent() {
 
   // Simpan Item dari Modal ke Daftar
   const handleSaveItemFromModal = () => {
+    const hasPole = modalPoleType !== 'none';
+
     // Hitung pricing untuk item ini
     const tempSpec: ModularProductSpec = {
       category: modalCategory,
       subCategory: modalSubCategory,
-      lengthCm: Number(modalLengthCm),
+      lengthCm: modalCategory === 'huruf_timbul' ? 0 : Number(modalLengthCm),
       heightCm: Number(modalHeightCm),
       text: modalText,
       charCount: modalCategory === 'huruf_timbul' ? (modalText.replace(/\s+/g, '').length || Number(modalCharCount)) : undefined,
       lightingType: modalSubCategory.includes('led') ? 'led_ip68_waterproof' : 'none',
-      needPoleConstruction: modalCategory === 'tiang',
-      poleHeightMeter: modalCategory === 'tiang' ? modalPoleHeightMeter : undefined,
-      needPondasiCakarAyam: modalCategory === 'tiang' ? modalPondasi : undefined,
-      pondasiPoints: modalCategory === 'tiang' ? modalPondasiPoints : undefined,
+      needPoleConstruction: hasPole,
+      poleType: hasPole ? modalPoleType : undefined,
+      poleHeightMeter: hasPole ? Number(modalPoleHeightMeter) : undefined,
+      needPondasiCakarAyam: hasPole ? modalPondasi : false,
+      pondasiPoints: hasPole && modalPondasi ? Number(modalPondasiPoints) : undefined,
       floorLevel: 1,
       targetMarginPercent: 35,
     };
@@ -225,24 +241,35 @@ function CalculatorContent() {
     let dims = '';
     let specs = '';
 
+    let poleDesc = '';
+    if (hasPole) {
+      const poleName = modalPoleType === 'pipa_2' ? 'Tiang Pipa Besi 2"' 
+        : modalPoleType === 'pipa_3' ? 'Tiang Pipa Besi 3"' 
+        : modalPoleType === 'pipa_4' ? 'Tiang Pipa Besi 4"' 
+        : modalPoleType === 'pipa_6' ? 'Tiang Pipa Besi 6" Schedule' 
+        : 'Rangka Hollow/Siku';
+      poleDesc = `Konstruksi: ${poleName} (${modalPoleHeightMeter}m)${modalPondasi ? ` + Cor Cakar Ayam (${modalPondasiPoints} Titik)` : ''}`;
+    }
+
     if (modalCategory === 'huruf_timbul') {
       const charNum = modalText.replace(/\s+/g, '').length || modalCharCount;
       desc = modalCustomDesc || `Huruf Timbul ${modalText ? `"${modalText.toUpperCase()}"` : ''}`;
-      dims = `Tinggi ${modalHeightCm}cm (${charNum} Huruf)`;
-      specs = itemPricing.material.materialDescription;
+      dims = formatItemDimensions({
+        itemType: 'huruf_timbul',
+        heightCm: Number(modalHeightCm),
+        widthCm: Number(modalLengthCm) || null,
+        charCount: charNum,
+        textOrLabel: modalText,
+      });
+      specs = itemPricing.material.materialDescription + (poleDesc ? `\n• ${poleDesc}` : '');
     } else if (modalCategory === 'neon_box') {
       desc = modalCustomDesc || (modalSubCategory === 'neon_box_2sisi' ? 'Neon Box Akrilik 2 Sisi' : 'Neon Box Akrilik 1 Sisi');
       dims = `${modalLengthCm} x ${modalHeightCm} cm (${itemPricing.material.areaM2} m²)`;
-      specs = itemPricing.material.materialDescription;
-    } else if (modalCategory === 'papan_reklame') {
+      specs = itemPricing.material.materialDescription + (poleDesc ? `\n• ${poleDesc}` : '');
+    } else {
       desc = modalCustomDesc || 'Papan Reklame Flexi Korea';
       dims = `${modalLengthCm} x ${modalHeightCm} cm (${itemPricing.material.areaM2} m²)`;
-      specs = itemPricing.material.materialDescription;
-    } else {
-      // Tiang & Konstruksi
-      desc = modalCustomDesc || `Konstruksi Tiang ${modalSubCategory === 'tiang_pipa_2' ? 'Pipa Besi 2"' : modalSubCategory === 'tiang_pipa_4' ? 'Pipa Besi 4"' : modalSubCategory === 'tiang_pipa_6' ? 'Pipa Besi 6"' : modalSubCategory === 'rangka_hollow' ? 'Rangka Hollow/Siku' : 'Pipa Besi 3"'}`;
-      dims = `Tinggi ${modalPoleHeightMeter} Meter${modalPondasi ? ` (${modalPondasiPoints} Titik Cakar Ayam)` : ''}`;
-      specs = itemPricing.material.materialDescription;
+      specs = itemPricing.material.materialDescription + (poleDesc ? `\n• ${poleDesc}` : '');
     }
 
     const unitSell = itemPricing.finalSellingPrice;
@@ -258,7 +285,7 @@ function CalculatorContent() {
       textOrLabel: modalText,
       charCount: modalCategory === 'huruf_timbul' ? (modalText.replace(/\s+/g, '').length || modalCharCount) : undefined,
       heightCm: Number(modalHeightCm),
-      widthCm: Number(modalLengthCm),
+      widthCm: modalCategory === 'huruf_timbul' ? (Number(modalLengthCm) || 0) : Number(modalLengthCm),
       material: modalSubCategory,
       lighting: modalSubCategory.includes('led') ? 'frontlit' : 'none',
       quantity: qty,
@@ -603,7 +630,7 @@ function CalculatorContent() {
                 <Layers className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-slate-600">Belum ada item reklame ditambahkan.</p>
                 <p className="text-[11px] text-slate-400">
-                  Klik tombol &quot;Tambah Item&quot; untuk memilih Huruf Timbul, Neon Box, Papan Reklame, atau Tiang.
+                  Klik tombol &quot;Tambah Item&quot; untuk memilih Huruf Timbul, Neon Box, atau Billboard.
                 </p>
               </div>
             ) : (
@@ -778,7 +805,7 @@ function CalculatorContent() {
                   inputMode="numeric"
                   value={customDealPrice || ''}
                   onChange={(e) => setCustomDealPrice(Number(e.target.value) || null)}
-                  placeholder={baseSubtotal > 0 ? baseSubtotal.toString() : '0'}
+                  placeholder="Kosongkan jika harga normal (tanpa nego)"
                   className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-black text-slate-900 text-sm focus:ring-2 focus:ring-rose-500"
                 />
               </div>
@@ -820,8 +847,8 @@ function CalculatorContent() {
               </button>
             </div>
 
-            {/* 4 Category Tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+            {/* 3 Category Tabs: Signage Only */}
+            <div className="grid grid-cols-3 gap-1.5 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => handleModalCategoryChange('huruf_timbul')}
@@ -854,17 +881,6 @@ function CalculatorContent() {
                 }`}
               >
                 Billboard
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModalCategoryChange('tiang')}
-                className={`py-2 px-1 rounded-xl border text-center transition ${
-                  modalCategory === 'tiang'
-                    ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                Tiang & Pondasi
               </button>
             </div>
 
@@ -907,20 +923,6 @@ function CalculatorContent() {
                   <option value="billboard_heavy_duty">Rangka Billboard Besi Siku Heavy Duty — Rp 1.350.000 / m²</option>
                 </select>
               )}
-
-              {modalCategory === 'tiang' && (
-                <select
-                  value={modalSubCategory}
-                  onChange={(e) => setModalSubCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
-                >
-                  <option value="tiang_pipa_3">Tiang Pipa Besi 3 Inch — Rp 250.000 / meter</option>
-                  <option value="tiang_pipa_2">Tiang Pipa Besi 2 Inch — Rp 175.000 / meter</option>
-                  <option value="tiang_pipa_4">Tiang Pipa Besi 4 Inch — Rp 375.000 / meter</option>
-                  <option value="tiang_pipa_6">Tiang Pipa Besi 6 Inch Schedule — Rp 650.000 / meter</option>
-                  <option value="rangka_hollow">Rangka Besi Hollow & Siku — Rp 150.000 / meter</option>
-                </select>
-              )}
             </div>
 
             {/* Dimension Inputs per Category */}
@@ -942,7 +944,7 @@ function CalculatorContent() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block font-medium text-slate-600 mb-1">Tinggi Huruf (cm):</label>
+                    <label className="block font-medium text-slate-600 mb-1">Tinggi Huruf (cm) *:</label>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -950,9 +952,10 @@ function CalculatorContent() {
                       onChange={(e) => setModalHeightCm(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
                     />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Dihitung tarif per cm</span>
                   </div>
                   <div>
-                    <label className="block font-medium text-slate-600 mb-1">Jumlah Huruf:</label>
+                    <label className="block font-medium text-slate-600 mb-1">Jumlah Huruf *:</label>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -960,7 +963,24 @@ function CalculatorContent() {
                       onChange={(e) => setModalCharCount(Number(e.target.value))}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
                     />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Otomatis dari teks di atas</span>
                   </div>
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-500 mb-1">
+                    Estimasi Bentang Dinding Lapangan (cm) <span className="font-normal text-slate-400">[Opsional]</span>:
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={modalLengthCm || ''}
+                    onChange={(e) => setModalLengthCm(Number(e.target.value))}
+                    placeholder="Contoh: 300 (bentangan dinding)"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 text-xs"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    *Hanya catatan bentangan fisik dinding lokasi (opsional), tidak dihitung sebagai ukuran tinggi per huruf.
+                  </span>
                 </div>
               </div>
             )}
@@ -990,44 +1010,65 @@ function CalculatorContent() {
               </div>
             )}
 
-            {modalCategory === 'tiang' && (
-              <div className="space-y-2.5 text-xs">
-                <div>
-                  <label className="block font-medium text-slate-600 mb-1">Tinggi Tiang (Meter):</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={modalPoleHeightMeter}
-                    onChange={(e) => setModalPoleHeightMeter(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
-                  />
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                  <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+            {/* Opsi Konstruksi Tiang & Pondasi Dropdown (Bukan Tab) */}
+            <div className="space-y-2 text-xs pt-3 border-t border-slate-200">
+              <label className="block font-bold text-slate-800 mb-1">
+                Konstruksi Tiang & Pondasi (Opsional):
+              </label>
+              <select
+                value={modalPoleType}
+                onChange={(e) => setModalPoleType(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+              >
+                <option value="none">Tanpa Tiang (Pasang di Dinding / Fasad)</option>
+                <option value="pipa_3">Tiang Pipa Besi 3 Inch (+ Rp 250.000 / meter)</option>
+                <option value="pipa_2">Tiang Pipa Besi 2 Inch (+ Rp 175.000 / meter)</option>
+                <option value="pipa_4">Tiang Pipa Besi 4 Inch (+ Rp 375.000 / meter)</option>
+                <option value="pipa_6">Tiang Pipa Besi 6 Inch Schedule (+ Rp 650.000 / meter)</option>
+                <option value="rangka_hollow">Rangka Besi Hollow & Siku (+ Rp 150.000 / meter)</option>
+              </select>
+
+              {modalPoleType !== 'none' && (
+                <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-200 space-y-2.5 mt-2">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Tinggi Tiang (Meter):</label>
                     <input
-                      type="checkbox"
-                      checked={modalPondasi}
-                      onChange={(e) => setModalPondasi(e.target.checked)}
-                      className="rounded text-rose-600 w-4 h-4"
+                      type="number"
+                      inputMode="numeric"
+                      value={modalPoleHeightMeter}
+                      onChange={(e) => setModalPoleHeightMeter(Number(e.target.value))}
+                      min={1}
+                      max={20}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
                     />
-                    <span>+ Tambah Pondasi Cor Cakar Ayam</span>
-                  </label>
-                  {modalPondasi && (
-                    <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Jumlah Titik Cakar Ayam:</label>
+                  </div>
+                  <div className="pt-1">
+                    <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
                       <input
-                        type="number"
-                        value={modalPondasiPoints}
-                        onChange={(e) => setModalPondasiPoints(Number(e.target.value))}
-                        min={1}
-                        max={6}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                        type="checkbox"
+                        checked={modalPondasi}
+                        onChange={(e) => setModalPondasi(e.target.checked)}
+                        className="rounded text-rose-600 w-4 h-4"
                       />
-                    </div>
-                  )}
+                      <span>+ Cor Pondasi Cakar Ayam</span>
+                    </label>
+                    {modalPondasi && (
+                      <div className="mt-2 pl-6">
+                        <label className="block text-[11px] text-slate-600 mb-1">Jumlah Titik Cakar Ayam:</label>
+                        <input
+                          type="number"
+                          value={modalPondasiPoints}
+                          onChange={(e) => setModalPondasiPoints(Number(e.target.value))}
+                          min={1}
+                          max={6}
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>

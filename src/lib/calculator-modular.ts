@@ -14,7 +14,7 @@ export interface ModularProductSpec {
   lightingType: 'none' | 'led_standard' | 'led_ip68_waterproof' | 'backlight_halolight' | 'frontlit_led';
   // Konstruksi Tiang & Pondasi (Add-on)
   needPoleConstruction?: boolean;
-  poleType?: 'pipa_2' | 'pipa_3' | 'pipa_4' | 'pipa_6';
+  poleType?: 'pipa_2' | 'pipa_3' | 'pipa_4' | 'pipa_6' | 'rangka_hollow';
   poleHeightMeter?: number;
   needPondasiCakarAyam?: boolean;
   pondasiPoints?: number;
@@ -245,7 +245,8 @@ export function calculateConstruction(spec: ModularProductSpec) {
   let poleSell = 0;
   let poleDesc = 'Tanpa Tiang (Dinding/Fasad)';
 
-  if (spec.needPoleConstruction) {
+  // Jika produk utamanya adalah Tiang, jangan hitung add-on tiang lagi (mencegah double count)
+  if (spec.category !== 'tiang' && spec.needPoleConstruction) {
     const height = spec.poleHeightMeter || 3;
     let rateSellPerM = 250000;
     let rateCostPerM = 150000;
@@ -271,6 +272,12 @@ export function calculateConstruction(spec: ModularProductSpec) {
         rateSellPerM = 650000;
         rateCostPerM = 420000;
         sizeLabel = '6 Inch Schedule';
+        break;
+      case 'rangka_hollow':
+      default:
+        rateSellPerM = 150000;
+        rateCostPerM = 90000;
+        sizeLabel = 'Rangka Besi Hollow & Siku';
         break;
     }
 
@@ -583,3 +590,45 @@ export function calculateLedModules(spec: {
 
   return { ledCount, trafoWatt, isIlluminated: true };
 }
+
+// =========================================================================
+// 11. SIZE FORMATTERS (HURUF TIMBUL VS NEON BOX / BILLBOARD)
+// =========================================================================
+
+export function formatItemSizeClean(item: {
+  itemType?: string | null;
+  heightCm?: number | null;
+  widthCm?: number | null;
+  charCount?: number | null;
+  textOrLabel?: string | null;
+}): string {
+  if (item.itemType === 'huruf_timbul') {
+    const chars = item.charCount || item.textOrLabel?.replace(/\s+/g, '').length || '';
+    const charPart = chars ? ` (${chars} Huruf)` : '';
+    return `Tinggi ${item.heightCm || 0} cm${charPart}`;
+  }
+  if (item.heightCm && item.widthCm) {
+    return `${item.heightCm} x ${item.widthCm} cm`;
+  }
+  return item.heightCm ? `Tinggi ${item.heightCm} cm` : '-';
+}
+
+export function formatItemDimensions(item: {
+  itemType?: string | null;
+  heightCm?: number | null;
+  widthCm?: number | null;
+  charCount?: number | null;
+  textOrLabel?: string | null;
+}): string {
+  if (item.itemType === 'huruf_timbul') {
+    const chars = item.charCount || item.textOrLabel?.replace(/\s+/g, '').length || '';
+    const charPart = chars ? ` (${chars} Huruf)` : '';
+    const spanPart = item.widthCm && item.widthCm > 0 ? ` • Bentangan ~${item.widthCm} cm` : '';
+    return `Tinggi ${item.heightCm || 0} cm${charPart}${spanPart}`;
+  }
+  if (item.heightCm && item.widthCm) {
+    return `${item.heightCm} x ${item.widthCm} cm`;
+  }
+  return item.heightCm ? `Tinggi ${item.heightCm} cm` : '-';
+}
+
