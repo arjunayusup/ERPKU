@@ -19,63 +19,91 @@ model User {
 }
 
 model Customer {
-  id        String   @id @default(uuid())
-  name      String
+  id        String    @id @default(uuid())
+  name      String    // Nama Usaha / Brand / Toko (e.g. Kopi Kenangan)
   company   String?
-  phone     String
-  address   String?
-  createdAt DateTime @default(now())
+  picName   String?   // Nama PIC Kontak (e.g. Bu Bella)
+  phone     String    // Nomor WhatsApp (e.g. 6281299887766)
+  address   String?   // Alamat Kantor / Pasang
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  projects  Project[]
 }
 
 model MaterialRate {
   id            String   @id @default(uuid())
   name          String
-  category      String   // "huruf_timbul", "neon_box", "led", "trafo"
-  unit          String   // "cm", "m2", "pcs"
+  category      String   // "huruf_timbul", "neon_box", "reklame", "tiang", "aksesoris", "led", "trafo"
+  unit          String   // "cm", "m2", "m", "pcs", "titik"
   costPrice     Float    // HPP / Modal
   sellPrice     Float    // Harga Jual Acuan
   notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
 model Project {
   id                  String               @id @default(uuid())
-  projectNumber       String               @unique // e.g. PRJ-202609-001
-  title               String
-  clientName          String
-  clientPhone         String
-  installationAddress String?
-  status              String               @default("draft") // draft, deal, in_production, ready_install, completed
-  totalHpp            Float                @default(0)
-  totalDeal           Float                @default(0)
-  totalExpenses       Float                @default(0)
-  realProfit          Float                @default(0)
+  projectNumber       String               @unique // e.g. QUO-SA-202609-001 or PRJ-202609-001
+  title               String               // Nama Pekerjaan (e.g. Pekerjaan Signage Outlet Dago)
+  branch              String               @default("jakarta") // "jakarta", "bandung", "tangerang"
+  clientName          String               // Nama Toko/Klien
+  clientPhone         String               // No. WhatsApp Klien
+  picName             String?              // Nama PIC
+  installationAddress String?              // Alamat Pasang
+  status              String               @default("draft") // draft, sent, deal, in_production, ready_install, completed
+
+  // Finansial & Negosiasi
+  subtotal            Float                @default(0) // Total kotor semua item
+  discountType        String?              // "fixed", "percent"
+  discountValue       Float                @default(0) // Nilai diskon
+  discountNote        String?              // e.g. "Diskon Khusus Proyek"
+  taxPercent          Float                @default(0) // PPN opsional
+  taxAmount           Float                @default(0)
+  totalDeal           Float                @default(0) // Grand Total Kesepakatan Akhir
+  totalHpp            Float                @default(0) // Total HPP Modal
+  totalExpenses       Float                @default(0) // Belanja tambahan lapangan
+  realProfit          Float                @default(0) // Laba Bersih = totalDeal - totalHpp - totalExpenses
+
+  notes               String?              // Catatan termin / syarat teknis
+  deletedAt           DateTime?            // Soft Delete flag (NULL = aktif, Terisi = sampah)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
+  clientId            String?
+  client              Customer?            @relation(fields: [clientId], references: [id])
   items               QuotationItem[]
   expenses            ProjectExpense[]
   installations       InstallationSchedule[]
 }
 
 model QuotationItem {
-  id           String   @id @default(uuid())
-  projectId    String
-  itemType     String   // "huruf_timbul", "neon_box", "custom"
-  description  String
-  textOrLabel  String?  // Teks Huruf (e.g. "KOPI KENANGAN")
-  charCount    Int?
-  heightCm     Float?
-  widthCm      Float?
-  material     String
-  lighting     String   // "none", "backlight", "frontlit"
-  ledCount     Int?
-  trafoWatt    Int?
-  hppPrice     Float    @default(0)
-  sellingPrice Float    @default(0)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(uuid())
+  projectId      String
+  itemType       String   // "huruf_timbul", "neon_box", "reklame", "tiang", "custom", "jasa"
+  description    String   // Judul Item (e.g. "Huruf Timbul Stainless Biasa + Lampu LED")
+  specifications String?  // Rincian Spek (e.g. "Stainless 201 Hairline, LED Modul IP68, Trafo 100W")
+  textOrLabel    String?  // Teks Huruf (e.g. "KOPI KENANGAN")
+  charCount      Int?
+  heightCm       Float?
+  widthCm        Float?
+  material       String   // Nama Material
+  lighting       String   @default("none") // "none", "backlight", "frontlit"
+  ledCount       Int?
+  trafoWatt      Int?
 
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quantity       Int      @default(1)
+  unitPrice      Float    @default(0) // Snapshot harga satuan jual
+  sellingPrice   Float    @default(0) // subtotal jual = quantity * unitPrice
+  unitHpp        Float    @default(0) // Snapshot modal HPP per unit
+  hppPrice       Float    @default(0) // subtotal modal = quantity * unitHpp
+
+  createdAt      DateTime @default(now())
+
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model ProjectExpense {
@@ -92,7 +120,7 @@ model ProjectExpense {
 }
 
 model InstallationSchedule {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   projectId      String
   date           String
   timeSlot       String   // "09:00 - 13:00 (Pagi)", "22:00 - 04:00 (Malam Mall)"

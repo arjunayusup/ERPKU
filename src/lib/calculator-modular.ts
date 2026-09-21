@@ -1,5 +1,7 @@
+import { getBranchConfig } from './branches';
+
 export interface ModularProductSpec {
-  category: 'huruf_timbul' | 'neon_box' | 'papan_reklame';
+  category: 'huruf_timbul' | 'neon_box' | 'papan_reklame' | 'tiang' | 'custom';
   subCategory: string;
   // Dimensi
   lengthCm: number;
@@ -25,10 +27,28 @@ export interface ModularProductSpec {
   // Variabel Lapangan
   floorLevel: number; // 1, 2, 3, 4+
   useScaffolding?: boolean;
-  useCrane?: boolean;
   distanceKm?: number;
   // Margin
   targetMarginPercent: number;
+}
+
+export interface MultiItemLine {
+  id: string;
+  itemType: string;
+  description: string;
+  specifications: string;
+  dimensions?: string;
+  textOrLabel?: string;
+  charCount?: number;
+  heightCm?: number;
+  widthCm?: number;
+  material: string;
+  lighting?: string;
+  quantity: number;
+  unitPrice: number;
+  sellingPrice: number;
+  unitHpp: number;
+  hppPrice: number;
 }
 
 // 1. Material & Basic Unit Calculator (Official Salsabilla Rates)
@@ -52,7 +72,7 @@ export function calculateMaterial(spec: ModularProductSpec) {
       case 'galvanis_duco_off':
         sellRatePerCm = 10000;
         costRatePerCm = 5000;
-        materialDescription = 'Plat Galvanis Bending Las Finishing Cat Duco (Non-Lampu)';
+        materialDescription = 'Plat Galvanis Cat Duco (Non-Lampu)';
         break;
       case 'akrilik_off':
         sellRatePerCm = 10000;
@@ -62,23 +82,23 @@ export function calculateMaterial(spec: ModularProductSpec) {
       case 'stainless_off':
         sellRatePerCm = 12000;
         costRatePerCm = 6500;
-        materialDescription = 'Stainless Steel 201/304 Mirror/Hairline (Non-Lampu)';
+        materialDescription = 'Stainless Steel 201/304 (Non-Lampu)';
         break;
       case 'akrilik_dual_glow':
         sellRatePerCm = 18000;
         costRatePerCm = 9500;
-        materialDescription = 'Akrilik Dual Glow (Cahaya Depan & Siluet Belakang LED)';
+        materialDescription = 'Akrilik Dual Glow (Cahaya Depan & Belakang LED)';
         break;
       case 'stainless_biasa_led':
         sellRatePerCm = 20000;
         costRatePerCm = 10500;
-        materialDescription = 'Stainless Steel Biasa + Backlight Lampu LED';
+        materialDescription = 'Stainless Steel Biasa + Backlight LED';
         break;
       case 'stainless_gold_led':
       default:
         sellRatePerCm = 25000;
         costRatePerCm = 13500;
-        materialDescription = 'Stainless Steel Gold Titanium Mirror + Lampu LED';
+        materialDescription = 'Stainless Steel Gold Titanium + Lampu LED';
         break;
     }
 
@@ -105,13 +125,13 @@ export function calculateMaterial(spec: ModularProductSpec) {
       case 'neon_box_1sisi':
         sellRatePerM2 = 1900000;
         costRatePerM2 = 1050000;
-        materialDescription = 'Neon Box 1 Sisi Hollow 2x2, Akrilik, Lampu TL/LED Tube (Tanpa Tiang)';
+        materialDescription = 'Neon Box 1 Sisi Akrilik + Lampu TL';
         break;
       case 'neon_box_2sisi':
       default:
         sellRatePerM2 = 2850000;
         costRatePerM2 = 1550000;
-        materialDescription = 'Neon Box 2 Sisi Hollow 2x2, Akrilik Bolak-Balik, Lampu TL (Tanpa Tiang)';
+        materialDescription = 'Neon Box 2 Sisi Akrilik Bolak-Balik + Lampu TL';
         break;
     }
 
@@ -138,11 +158,11 @@ export function calculateMaterial(spec: ModularProductSpec) {
     if (spec.subCategory === 'billboard_heavy_duty') {
       sellRatePerM2 = 1350000;
       costRatePerM2 = 750000;
-      materialDescription = 'Rangka Billboard Siku Heavy Duty + Pengaku Angin (Tanpa Tiang)';
+      materialDescription = 'Rangka Billboard Siku Heavy Duty';
     } else {
       sellRatePerM2 = 950000;
       costRatePerM2 = 520000;
-      materialDescription = 'Papan Reklame Rangka Hollow 3x3, Plat Galvalum, Flexi Korea Hi-Res (Tanpa Tiang)';
+      materialDescription = 'Papan Reklame Hollow 3x3 + Galvalum + Flexi Korea';
     }
 
     materialHpp = Math.round(areaM2 * costRatePerM2);
@@ -197,7 +217,7 @@ export function calculateConstruction(spec: ModularProductSpec) {
 
     poleHpp = Math.round(height * rateCostPerM);
     poleSell = Math.round(height * rateSellPerM);
-    poleDesc = `Tiang Pipa Besi ${sizeLabel} (${height} Meter)`;
+    poleDesc = `Tiang Pipa Besi ${sizeLabel} (${height}m)`;
   }
 
   let pondasiHpp = 0;
@@ -207,7 +227,7 @@ export function calculateConstruction(spec: ModularProductSpec) {
     const points = spec.pondasiPoints || 1;
     pondasiHpp = points * 500000;
     pondasiSell = points * 850000;
-    pondasiDesc = `Pondasi Cor Cakar Ayam + Baseplate (${points} Titik)`;
+    pondasiDesc = `Pondasi Cor Cakar Ayam (${points} Titik)`;
   }
 
   const constructionHpp = poleHpp + pondasiHpp;
@@ -227,17 +247,15 @@ export function calculateAddons(spec: ModularProductSpec) {
   let addonSell = 0;
   let addonDesc = '';
 
-  // Cutting Sticker
   if (spec.stickerType && spec.stickerType !== 'none') {
     const area = spec.stickerAreaM2 || 1.0;
     const rateSell = spec.stickerType === 'oracal_8500' ? 350000 : 250000;
     const rateCost = spec.stickerType === 'oracal_8500' ? 195000 : 135000;
     addonHpp += Math.round(area * rateCost);
     addonSell += Math.round(area * rateSell);
-    addonDesc += `Cutting Sticker ${spec.stickerType === 'oracal_8500' ? 'Oracal 8500 Translucent' : 'Oracal 651'} (${area}m2); `;
+    addonDesc += `Cutting Sticker ${spec.stickerType === 'oracal_8500' ? 'Oracal 8500' : 'Oracal 651'} (${area}m2); `;
   }
 
-  // Spotlight
   if (spec.spotlightWatt && spec.spotlightWatt > 0 && spec.spotlightCount) {
     const rateSell = spec.spotlightWatt === 100 ? 450000 : 275000;
     const rateCost = spec.spotlightWatt === 100 ? 260000 : 155000;
@@ -249,7 +267,7 @@ export function calculateAddons(spec: ModularProductSpec) {
   return {
     addonHpp,
     addonSell,
-    addonDesc: addonDesc.trim() || 'Standar (Tanpa Add-on Khusus)',
+    addonDesc: addonDesc.trim() || 'Standar',
   };
 }
 
@@ -266,10 +284,6 @@ export function calculateInstallation(spec: ModularProductSpec) {
   if (spec.useScaffolding) {
     toolsRentHpp += 150000;
     toolsRentSell += 250000;
-  }
-  if (spec.useCrane) {
-    toolsRentHpp += 2500000;
-    toolsRentSell += 3500000;
   }
 
   const installationHpp = Math.round(installationBaseHpp * heightMultiplier) + toolsRentHpp;
@@ -297,7 +311,7 @@ export function calculateTransportation(spec: ModularProductSpec) {
   };
 }
 
-// 6. Master Modular Pricing Integrator
+// 6. Master Single-Item Calculator
 export function calculatePricing(spec: ModularProductSpec) {
   const material = calculateMaterial(spec);
   const construction = calculateConstruction(spec);
@@ -312,7 +326,6 @@ export function calculatePricing(spec: ModularProductSpec) {
     installation.installationHpp +
     transport.transportHpp;
 
-  // Selling price based on official Salsabilla catalog rates
   const rawSellingPrice =
     material.materialSell +
     construction.constructionSell +
@@ -320,7 +333,6 @@ export function calculatePricing(spec: ModularProductSpec) {
     installation.installationSell +
     transport.transportSell;
 
-  // Round up to nearest 5.000
   const finalSellingPrice = Math.ceil(rawSellingPrice / 5000) * 5000;
   const grossProfit = finalSellingPrice - subtotalHpp;
   const actualMarginPercent = Math.round((grossProfit / finalSellingPrice) * 100);
@@ -338,62 +350,113 @@ export function calculatePricing(spec: ModularProductSpec) {
   };
 }
 
-// 7. Instant WhatsApp Message Generator (100% Free via wa.me)
+// =========================================================================
+// 7. TWO-WAY PRICING & REVERSE MARGIN ENGINE
+// =========================================================================
+
+// Hitung harga normal dari margin
+export function calculateForwardPrice(totalHpp: number, marginPercent: number): number {
+  if (totalHpp <= 0) return 0;
+  const raw = totalHpp * (1 + marginPercent / 100);
+  return Math.ceil(raw / 5000) * 5000;
+}
+
+// Hitung margin riil dari harga kesepakatan nego (Reverse Calculation)
+export function calculateReverseMargin(totalHpp: number, negotiatedPrice: number): number {
+  if (negotiatedPrice <= 0 || totalHpp <= 0) return 0;
+  const profit = negotiatedPrice - totalHpp;
+  return Math.round((profit / negotiatedPrice) * 100);
+}
+
+// Visual Health Indicator (Hijau, Kuning, Merah)
+export function getMarginHealthStatus(marginPercent: number) {
+  if (marginPercent >= 30) {
+    return { label: 'Margin Sehat', color: 'emerald', code: 'safe' };
+  }
+  if (marginPercent >= 15) {
+    return { label: 'Margin Tipis (Hati-hati)', color: 'amber', code: 'warning' };
+  }
+  return { label: 'Bahaya Rugi!', color: 'rose', code: 'danger' };
+}
+
+// Distribusi penyesuaian harga nego ke multi-item secara proporsional
+export function distributeNegotiatedTotal(items: MultiItemLine[], targetTotal: number): MultiItemLine[] {
+  const currentTotal = items.reduce((sum, it) => sum + it.sellingPrice, 0);
+  if (currentTotal <= 0 || items.length === 0) return items;
+
+  const ratio = targetTotal / currentTotal;
+  let distributedSum = 0;
+
+  return items.map((item, idx) => {
+    if (idx === items.length - 1) {
+      // Item terakhir menampung selisih pembulatan agar grand total tepat 100%
+      const remainingPrice = targetTotal - distributedSum;
+      const unitPrice = Math.max(1000, Math.round(remainingPrice / item.quantity));
+      return {
+        ...item,
+        unitPrice,
+        sellingPrice: remainingPrice,
+      };
+    }
+
+    const rawNewItemTotal = item.sellingPrice * ratio;
+    const roundedTotal = Math.round(rawNewItemTotal / 5000) * 5000;
+    distributedSum += roundedTotal;
+    const unitPrice = Math.max(1000, Math.round(roundedTotal / item.quantity));
+
+    return {
+      ...item,
+      unitPrice,
+      sellingPrice: roundedTotal,
+    };
+  });
+}
+
+// =========================================================================
+// 8. HIGH-CONVERTING WHATSAPP QUOTE GENERATOR (CONCISE & DYNAMIC BRANCH)
+// =========================================================================
+
 export function generateWhatsAppQuoteText({
   clientName,
-  spec,
-  pricing,
-  branchCity,
+  projectName,
+  items,
+  grandTotal,
+  branchId,
 }: {
   clientName: string;
-  spec: ModularProductSpec;
-  pricing: ReturnType<typeof calculatePricing>;
-  branchCity: string;
+  projectName?: string;
+  items: MultiItemLine[];
+  grandTotal: number;
+  branchId: string;
 }) {
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  let specDetails = '';
-  if (spec.category === 'huruf_timbul') {
-    const textLabel = spec.text ? `"${spec.text}"` : `${pricing.material.charCount} Karakter`;
-    specDetails = `• Produk: Huruf Timbul (${pricing.material.materialDescription})\n• Teks/Brand: ${textLabel}\n• Tinggi: ${spec.heightCm} cm (${pricing.material.charCount} Huruf)`;
-  } else if (spec.category === 'neon_box') {
-    specDetails = `• Produk: ${pricing.material.materialDescription}\n• Dimensi: ${spec.lengthCm} x ${spec.heightCm} cm (Luas ${pricing.material.areaM2} m²)`;
-  } else {
-    specDetails = `• Produk: ${pricing.material.materialDescription}\n• Dimensi: ${spec.lengthCm} x ${spec.heightCm} cm (Luas ${pricing.material.areaM2} m²)`;
-  }
+  const branch = getBranchConfig(branchId);
 
-  if (spec.needPoleConstruction) {
-    specDetails += `\n• Konstruksi: ${pricing.construction.poleDesc}`;
-  }
-  if (spec.needPondasiCakarAyam) {
-    specDetails += `\n• Pondasi: ${pricing.construction.pondasiDesc}`;
-  }
+  // Buat rincian item ringkas
+  const itemLines = items.map((it, idx) => {
+    const qtyStr = it.quantity > 1 ? ` (${it.quantity}x)` : '';
+    const dimStr = it.dimensions ? ` - ${it.dimensions}` : '';
+    return `${idx + 1}. *${it.description}*${dimStr}${qtyStr} = ${formatRupiah(it.sellingPrice)}`;
+  }).join('\n');
 
-  const message = 
-`Halo Kak ${clientName || 'Bapak/Ibu'}, salam hangat dari *Salsabilla Advertising* cabang ${branchCity} 🙏
+  // Format pesan ringkas (5-7 baris, ramah, tidak agresif minta DP)
+  const message =
+`Halo Kak *${clientName || 'Bapak/Ibu'}*, salam dari *Salsabilla Advertising* 👋
 
-Terima kasih telah menghubungi kami. Berikut rincian estimasi penawaran harga untuk pesanan signage Anda:
+Berikut estimasi penawaran harga untuk pesanan *${projectName || 'Signage'}*:
 
-📋 *Spesifikasi Pekerjaan:*
-${specDetails}
-• Pemasangan: Area ${branchCity} (Lantai ${spec.floorLevel})
-• Garansi Resmi: 1 Tahun (Lampu LED & Trafo)
+📋 *Rincian Pekerjaan:*
+${itemLines}
 
-💰 *Total Estimasi Penawaran:*
-*${formatRupiah(pricing.finalSellingPrice)}*
+💰 *Total Penawaran:* *${formatRupiah(grandTotal)}*
+*(Sudah termasuk perakitan, uji kelistrikan & garansi resmi 1 tahun)*
 
-🏦 *Rekening Resmi Pembayaran DP:*
-BCA: *0860533036*
-A.n: *JUJU ABDUL ROHIM*
+📍 *Workshop:* ${branch.address}
 
-📍 *Workshop Resmi Kami:*
-• Jakarta: Jl. Hayam Wuruk No. 127
-• Bandung/Cimahi: Jl. Melong Raya No. 138
-• Tangerang: Jl. Raya Serpong KM 7
-
-Apakah ukuran dan spesifikasinya sudah sesuai kebutuhan, Kak? Jika ada yang ingin disesuaikan atau ingin jadwal survey lokasi, kami siap membantu! 😊`;
+Kira-kira ukurannya sudah pas Kak? Kalau butuh survey lokasi gratis atau konsultasi desain, tim kami siap bantu ya! 😊`;
 
   return message;
 }

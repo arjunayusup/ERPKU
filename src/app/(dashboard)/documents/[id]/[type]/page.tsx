@@ -175,55 +175,96 @@ export default async function DocumentPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-400">
-                  {project.items.map((item, idx) => (
-                    <tr key={item.id}>
-                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
-                      <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
-                        {item.description}
-                      </td>
-                      <td className="p-2.5 border-r border-slate-900 text-center font-medium">
-                        {item.heightCm} x {item.widthCm} cm
-                      </td>
-                      <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
-                        <p>• {item.material}</p>
-                        <p>• Lampu: {item.lighting === 'none' ? 'Non-LED' : `LED Modul + Trafo ${item.trafoWatt || 100}W`}</p>
-                      </td>
-                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">1</td>
-                      <td className="p-2.5 border-r border-slate-900 text-right font-semibold">
-                        {formatRupiah(item.sellingPrice)}
-                      </td>
-                      <td className="p-2.5 text-right font-extrabold text-slate-900">
-                        {formatRupiah(item.sellingPrice)}
-                      </td>
-                    </tr>
-                  ))}
-                  {/* Board Rangka Item jika ada */}
+                  {project.items.map((item, idx) => {
+                    const qty = item.quantity || 1;
+                    const unitPrice = item.unitPrice || (item.sellingPrice / qty);
+
+                    return (
+                      <tr key={item.id}>
+                        <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
+                        <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
+                          {item.description}
+                          {item.textOrLabel && (
+                            <span className="block font-mono text-rose-600 text-[10px] mt-0.5">
+                              Teks: &quot;{item.textOrLabel}&quot;
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-900 text-center font-medium">
+                          {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
+                          <p>• {item.specifications || item.material}</p>
+                          {item.lighting && item.lighting !== 'none' && (
+                            <p>• Sistem Penerangan: {item.lighting === 'frontlit' ? 'LED Frontlit' : 'LED Backlight Siluet'}</p>
+                          )}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-900 text-center font-bold">{qty}</td>
+                        <td className="p-2.5 border-r border-slate-900 text-right font-semibold">
+                          {formatRupiah(unitPrice)}
+                        </td>
+                        <td className="p-2.5 text-right font-extrabold text-slate-900">
+                          {formatRupiah(item.sellingPrice)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Jasa Instalasi & Perkuatan jika ada item */}
                   <tr>
                     <td className="p-2.5 border-r border-slate-900 text-center font-bold">{project.items.length + 1}</td>
                     <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
-                      Jasa Instalasi Lapangan & Perkuatan Rangka
+                      Jasa Instalasi & Uji Kelistrikan
                     </td>
                     <td className="p-2.5 border-r border-slate-900 text-center font-medium">
                       Area {branch.city}
                     </td>
                     <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
-                      <p>• Hollow galvanis perkuatan & dynabolt</p>
-                      <p>• Teknisi bersertifikat & uji coba kelistrikan</p>
+                      <p>• Dynabolt perkuatan, bracket siku, perapihan kabel</p>
+                      <p>• Garansi resmi pabrikasi & kelistrikan 1 tahun</p>
                     </td>
                     <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Lot</td>
-                    <td className="p-2.5 border-r border-slate-900 text-right font-semibold text-slate-500">Include</td>
-                    <td className="p-2.5 text-right font-extrabold text-slate-900">Include</td>
+                    <td className="p-2.5 border-r border-slate-900 text-right font-semibold text-slate-500">Termasuk</td>
+                    <td className="p-2.5 text-right font-extrabold text-slate-900">Termasuk</td>
                   </tr>
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-900 text-slate-900">
-                    <td colSpan={6} className="p-2.5 border-r border-slate-900 text-right uppercase tracking-wider">
-                      Sub Total
-                    </td>
-                    <td className="p-2.5 text-right text-sm">
-                      {formatRupiah(project.totalDeal)}
-                    </td>
-                  </tr>
+                  {project.discountValue > 0 ? (
+                    <>
+                      <tr className="bg-slate-50 font-bold border-t border-slate-900 text-slate-800">
+                        <td colSpan={6} className="p-2.5 border-r border-slate-900 text-right uppercase tracking-wider">
+                          Sub Total
+                        </td>
+                        <td className="p-2.5 text-right">
+                          {formatRupiah(project.subtotal || project.totalDeal)}
+                        </td>
+                      </tr>
+                      <tr className="bg-rose-50/40 font-bold text-rose-700 border-t border-slate-300">
+                        <td colSpan={6} className="p-2 border-r border-slate-900 text-right uppercase text-[11px]">
+                          {project.discountNote || 'Diskon Khusus Proyek'}
+                        </td>
+                        <td className="p-2 text-right text-[11px]">
+                          - {formatRupiah(project.discountValue)}
+                        </td>
+                      </tr>
+                      <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-900 text-slate-900">
+                        <td colSpan={6} className="p-2.5 border-r border-slate-900 text-right uppercase tracking-wider">
+                          Total Penawaran Akhir
+                        </td>
+                        <td className="p-2.5 text-right text-sm">
+                          {formatRupiah(project.totalDeal)}
+                        </td>
+                      </tr>
+                    </>
+                  ) : (
+                    <tr className="bg-slate-100 font-extrabold border-t-2 border-slate-900 text-slate-900">
+                      <td colSpan={6} className="p-2.5 border-r border-slate-900 text-right uppercase tracking-wider">
+                        Total Penawaran
+                      </td>
+                      <td className="p-2.5 text-right text-sm">
+                        {formatRupiah(project.totalDeal)}
+                      </td>
+                    </tr>
+                  )}
                 </tfoot>
               </table>
             </div>
