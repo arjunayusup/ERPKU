@@ -14,7 +14,8 @@ import {
   Trash2,
   RotateCcw,
   Search,
-  Filter
+  Filter,
+  Edit3
 } from 'lucide-react';
 import { deleteQuotationAction, restoreQuotationAction } from '@/app/actions/quotation';
 
@@ -229,6 +230,16 @@ export default function ProjectsClientList({
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      {isAdmin && (
+                        <a
+                          href={`/calculator?edit=${p.id}`}
+                          className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1"
+                          title="Edit Penawaran"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </a>
+                      )}
                       <a
                         href={`/projects/${p.id}`}
                         className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center gap-1"
@@ -337,6 +348,15 @@ export default function ProjectsClientList({
                           >
                             <FileText className="w-4 h-4" />
                           </a>
+                          {isAdmin && (
+                            <a
+                              href={`/calculator?edit=${p.id}`}
+                              title="Edit Penawaran Proyek"
+                              className="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </a>
+                          )}
                           <a
                             href={`/projects/${p.id}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition"

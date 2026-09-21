@@ -147,6 +147,65 @@ export function calculateMaterial(spec: ModularProductSpec) {
       heightCm: spec.heightCm,
       depthFactor: 1,
     };
+  } else if (spec.category === 'tiang') {
+    // Standalone Tiang & Konstruksi Line Item
+    const heightM = spec.poleHeightMeter || 3;
+    let sellPerM = 250000;
+    let costPerM = 150000;
+    let sizeLabel = '3 Inch';
+
+    switch (spec.subCategory) {
+      case 'tiang_pipa_2':
+        sellPerM = 175000;
+        costPerM = 105000;
+        sizeLabel = 'Pipa Besi 2 Inch';
+        break;
+      case 'tiang_pipa_3':
+        sellPerM = 250000;
+        costPerM = 150000;
+        sizeLabel = 'Pipa Besi 3 Inch';
+        break;
+      case 'tiang_pipa_4':
+        sellPerM = 375000;
+        costPerM = 230000;
+        sizeLabel = 'Pipa Besi 4 Inch';
+        break;
+      case 'tiang_pipa_6':
+        sellPerM = 650000;
+        costPerM = 420000;
+        sizeLabel = 'Pipa Besi 6 Inch Schedule';
+        break;
+      case 'rangka_hollow':
+      default:
+        sellPerM = 150000;
+        costPerM = 90000;
+        sizeLabel = 'Rangka Besi Hollow & Siku';
+        break;
+    }
+
+    let pondasiSell = 0;
+    let pondasiHpp = 0;
+    let pondasiDesc = '';
+    if (spec.needPondasiCakarAyam) {
+      const points = spec.pondasiPoints || 1;
+      pondasiHpp = points * 500000;
+      pondasiSell = points * 850000;
+      pondasiDesc = ` + Cor Cakar Ayam (${points} Titik)`;
+    }
+
+    materialHpp = Math.round(heightM * costPerM) + pondasiHpp;
+    materialSell = Math.round(heightM * sellPerM) + pondasiSell;
+    materialDescription = `Konstruksi ${sizeLabel} (${heightM}m)${pondasiDesc}`;
+
+    return {
+      materialHpp,
+      materialSell,
+      areaM2: 0,
+      materialDescription,
+      charCount: 0,
+      heightCm: heightM * 100,
+      depthFactor: 1,
+    };
   } else {
     // Papan Reklame / Billboard
     const rawArea = (spec.lengthCm * spec.heightCm) / 10000;
@@ -459,4 +518,68 @@ ${itemLines}
 Kira-kira ukurannya sudah pas Kak? Kalau butuh survey lokasi gratis atau konsultasi desain, tim kami siap bantu ya! 😊`;
 
   return message;
+}
+
+// =========================================================================
+// 9. CLEAN INDONESIAN MATERIAL LABELS (NO RAW SLUGS)
+// =========================================================================
+
+export function getMaterialDisplayLabel(slugOrName?: string | null): string {
+  if (!slugOrName) return 'Standar Bengkel Reklame';
+  const map: Record<string, string> = {
+    stainless_biasa_led: 'Huruf Timbul Stainless Steel + LED Backlight',
+    stainless_gold_led: 'Huruf Timbul Stainless Steel Gold Titanium + LED',
+    stainless_off: 'Huruf Timbul Stainless Steel 201/304 (Non-Lampu)',
+    galvanis_duco_off: 'Huruf Timbul Plat Galvanis Cat Duco (Non-Lampu)',
+    akrilik_off: 'Huruf Timbul Akrilik Solid Marga Cipta (Non-Lampu)',
+    akrilik_dual_glow: 'Huruf Timbul Akrilik Dual Glow (Frontlit + Backlight)',
+    neon_box_1sisi: 'Neon Box Akrilik 1 Sisi + Lampu TL/LED',
+    neon_box_2sisi: 'Neon Box Akrilik 2 Sisi Bolak-Balik + Lampu TL/LED',
+    reklame_flexi_korea: 'Papan Reklame Hollow 3x3 + Galvalum + Flexi Korea',
+    billboard_heavy_duty: 'Rangka Billboard Siku Heavy Duty',
+    tiang_pipa_2: 'Tiang Pipa Besi 2 Inch',
+    tiang_pipa_3: 'Tiang Pipa Besi 3 Inch',
+    tiang_pipa_4: 'Tiang Pipa Besi 4 Inch',
+    tiang_pipa_6: 'Tiang Pipa Besi 6 Inch Schedule',
+    rangka_hollow: 'Rangka Besi Hollow & Siku',
+  };
+  return map[slugOrName] || slugOrName;
+}
+
+// =========================================================================
+// 10. REALISTIC LED MODULE ESTIMATOR
+// =========================================================================
+
+export function calculateLedModules(spec: {
+  category?: string;
+  subCategory?: string;
+  heightCm?: number;
+  charCount?: number;
+  lightingType?: string;
+  material?: string;
+}): { ledCount: number; trafoWatt: number; isIlluminated: boolean } {
+  const textToCheck = `${spec.subCategory || ''} ${spec.material || ''} ${spec.lightingType || ''}`.toLowerCase();
+  const isIlluminated =
+    textToCheck.includes('led') ||
+    textToCheck.includes('glow') ||
+    textToCheck.includes('neon') ||
+    textToCheck.includes('frontlit') ||
+    textToCheck.includes('backlight') ||
+    (spec.lightingType && spec.lightingType !== 'none');
+
+  if (!isIlluminated) {
+    return { ledCount: 0, trafoWatt: 0, isIlluminated: false };
+  }
+
+  const height = spec.heightCm || 20;
+  const count = spec.charCount || 1;
+  const ledCount = Math.max(12, Math.ceil(height * count * 1.5));
+  const estimatedWatt = ledCount * 1.5 * 1.3;
+  let trafoWatt = 100;
+  if (estimatedWatt > 300) trafoWatt = 400;
+  else if (estimatedWatt > 150) trafoWatt = 300;
+  else if (estimatedWatt > 80) trafoWatt = 200;
+  else trafoWatt = 100;
+
+  return { ledCount, trafoWatt, isIlluminated: true };
 }

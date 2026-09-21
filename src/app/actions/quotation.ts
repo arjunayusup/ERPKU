@@ -258,3 +258,43 @@ export async function restoreQuotationAction(projectId: string) {
     return { success: false, error: error.message };
   }
 }
+
+// 5. GET QUOTATION BY ID FOR EDITING
+export async function getQuotationByIdAction(projectId: string) {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!project) {
+      return { success: false, error: 'Proyek tidak ditemukan.' };
+    }
+
+    return { success: true, project };
+  } catch (error: any) {
+    console.error('Error fetching quotation:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 6. UPDATE PROJECT STATUS ACTION
+export async function updateProjectStatusAction(projectId: string, newStatus: string) {
+  try {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { status: newStatus },
+    });
+
+    revalidatePath('/projects');
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating project status:', error);
+    return { success: false, error: error.message };
+  }
+}
+

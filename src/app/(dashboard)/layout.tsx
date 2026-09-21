@@ -73,43 +73,43 @@ export default async function DashboardLayout({
         <nav className="flex-1 px-3 py-2 space-y-1">
           <a
             href="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black tracking-wide text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <LayoutDashboard className="w-4 h-4 text-rose-600" />
-            <span>Dashboard</span>
+            <span>DASHBOARD</span>
           </a>
 
           <a
             href="/calculator"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black tracking-wide text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <Calculator className="w-4 h-4 text-amber-600" />
-            <span>Kalkulator Produk (Modular)</span>
+            <span>KALKULATOR PENAWARAN</span>
           </a>
 
           <a
             href="/projects"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black tracking-wide text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <FolderKanban className="w-4 h-4 text-indigo-600" />
-            <span>Proyek & SPK</span>
+            <span>PROYEK & SPK</span>
           </a>
 
           <a
             href="/schedule"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black tracking-wide text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <CalendarDays className="w-4 h-4 text-emerald-600" />
-            <span>Jadwal & Checklist Alat</span>
+            <span>JADWAL PEMASANGAN</span>
           </a>
 
           {isAdmin && (
             <a
               href="/master"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black tracking-wide text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
             >
               <Database className="w-4 h-4 text-blue-600" />
-              <span>Master Cabang & Tarif</span>
+              <span>MASTER DATA</span>
             </a>
           )}
         </nav>

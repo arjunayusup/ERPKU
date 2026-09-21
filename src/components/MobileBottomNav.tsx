@@ -15,26 +15,26 @@ export default function MobileBottomNav({ isAdmin }: { isAdmin: boolean }) {
 
   const navItems = [
     {
-      label: 'Home',
+      label: 'BERANDA',
       href: '/dashboard',
       icon: LayoutDashboard,
       active: pathname === '/dashboard',
     },
     {
-      label: 'Kalkulator',
+      label: 'KALKULATOR',
       href: '/calculator',
       icon: Calculator,
       active: pathname === '/calculator',
       highlight: true,
     },
     {
-      label: 'Proyek',
+      label: 'PROYEK',
       href: '/projects',
       icon: FolderKanban,
       active: pathname.startsWith('/projects'),
     },
     {
-      label: 'Jadwal',
+      label: 'JADWAL',
       href: '/schedule',
       icon: CalendarDays,
       active: pathname === '/schedule',
@@ -42,7 +42,7 @@ export default function MobileBottomNav({ isAdmin }: { isAdmin: boolean }) {
     ...(isAdmin
       ? [
           {
-            label: 'Master',
+            label: 'MASTER',
             href: '/master',
             icon: Database,
             active: pathname === '/master',

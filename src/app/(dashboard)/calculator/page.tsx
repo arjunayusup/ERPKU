@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   calculatePricing, 
   calculateReverseMargin,
   getMarginHealthStatus,
   distributeNegotiatedTotal,
   generateWhatsAppQuoteText,
+  getMaterialDisplayLabel,
   ModularProductSpec,
   MultiItemLine
 } from '@/lib/calculator-modular';
 import { getAllBranches, getBranchConfig } from '@/lib/branches';
-import { createQuotationAction } from '@/app/actions/quotation';
+import { createQuotationAction, updateQuotationAction, getQuotationByIdAction } from '@/app/actions/quotation';
 import { 
   Calculator, 
   Plus, 
@@ -32,11 +33,15 @@ import {
   CheckCircle2, 
   AlertCircle,
   X,
-  FileText
+  FileText,
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 
-export default function CalculatorPage() {
+function CalculatorContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
   const branches = getAllBranches();
 
   // 1. HEADER TRANSAKSI (DATA KLIEN BERSIH / CLEAN-SLATE)
@@ -55,27 +60,72 @@ export default function CalculatorPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // State Form Modal Item
-  const [modalCategory, setModalCategory] = useState<'huruf_timbul' | 'neon_box' | 'papan_reklame'>('huruf_timbul');
+  const [modalCategory, setModalCategory] = useState<'huruf_timbul' | 'neon_box' | 'papan_reklame' | 'tiang'>('huruf_timbul');
   const [modalSubCategory, setModalSubCategory] = useState('stainless_biasa_led');
   const [modalText, setModalText] = useState('');
   const [modalCharCount, setModalCharCount] = useState(10);
   const [modalHeightCm, setModalHeightCm] = useState(20);
   const [modalLengthCm, setModalLengthCm] = useState(100);
+  const [modalPoleHeightMeter, setModalPoleHeightMeter] = useState(3);
+  const [modalPondasi, setModalPondasi] = useState(false);
+  const [modalPondasiPoints, setModalPondasiPoints] = useState(1);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [modalCustomDesc, setModalCustomDesc] = useState('');
 
-  // 4. NEGOSIASI DUA ARAH & DISKON KHUSUS
+  // 4. NEGOSIASI DUA ARAH
   const [customDealPrice, setCustomDealPrice] = useState<number | null>(null);
-  const [enableSpecialDiscount, setEnableSpecialDiscount] = useState(false);
-  const [discountValue, setDiscountValue] = useState(0);
-  const [discountNote, setDiscountNote] = useState('Diskon Khusus Proyek');
 
   // 5. FITUR PRIVASI & STATE SIMPAN
   const [hideConfidential, setHideConfidential] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const activeBranch = getBranchConfig(branchId);
+
+  // Load existing project if edit param exists
+  useEffect(() => {
+    if (editId) {
+      setIsLoadingProject(true);
+      getQuotationByIdAction(editId).then((res) => {
+        setIsLoadingProject(false);
+        if (res.success && res.project) {
+          setIsEditMode(true);
+          const p = res.project;
+          setProjectName(p.title || '');
+          setClientName(p.clientName || '');
+          setPicName(p.picName || '');
+          setClientPhone(p.clientPhone || '');
+          setInstallationAddress(p.installationAddress || '');
+          setBranchId(p.branch || 'jakarta');
+          setItems(
+            p.items.map((it: any) => ({
+              id: it.id,
+              itemType: it.itemType,
+              description: it.description,
+              specifications: it.specifications || '',
+              dimensions: it.heightCm && it.widthCm ? `${it.heightCm} x ${it.widthCm} cm` : it.heightCm ? `Tinggi ${it.heightCm} cm` : undefined,
+              textOrLabel: it.textOrLabel || '',
+              charCount: it.charCount || undefined,
+              heightCm: it.heightCm || undefined,
+              widthCm: it.widthCm || undefined,
+              material: it.material,
+              lighting: it.lighting || 'none',
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              sellingPrice: it.sellingPrice,
+              unitHpp: it.unitHpp,
+              hppPrice: it.hppPrice,
+            }))
+          );
+          if (p.totalDeal && p.totalDeal !== p.subtotal) {
+            setCustomDealPrice(p.totalDeal);
+          }
+        }
+      });
+    }
+  }, [editId]);
 
   // Hitung akumulasi dasar dari items
   const baseSubtotal = useMemo(() => {
@@ -86,14 +136,13 @@ export default function CalculatorPage() {
     return items.reduce((acc, it) => acc + it.hppPrice, 0);
   }, [items]);
 
-  // Total deal setelah penyesuaian nego / diskon khusus
+  // Total deal setelah penyesuaian nego
   const effectiveGrandTotal = useMemo(() => {
     if (customDealPrice !== null && customDealPrice > 0) {
       return customDealPrice;
     }
-    const afterDiscount = enableSpecialDiscount ? Math.max(0, baseSubtotal - discountValue) : baseSubtotal;
-    return afterDiscount;
-  }, [customDealPrice, enableSpecialDiscount, discountValue, baseSubtotal]);
+    return baseSubtotal;
+  }, [customDealPrice, baseSubtotal]);
 
   // Margin Riil Dua Arah
   const realMarginPercent = useMemo(() => {
@@ -109,7 +158,7 @@ export default function CalculatorPage() {
   };
 
   // Switch Sub-Category in modal
-  const handleModalCategoryChange = (cat: 'huruf_timbul' | 'neon_box' | 'papan_reklame') => {
+  const handleModalCategoryChange = (cat: 'huruf_timbul' | 'neon_box' | 'papan_reklame' | 'tiang') => {
     setModalCategory(cat);
     if (cat === 'huruf_timbul') {
       setModalSubCategory('stainless_biasa_led');
@@ -117,10 +166,13 @@ export default function CalculatorPage() {
       setModalSubCategory('neon_box_2sisi');
       setModalLengthCm(100);
       setModalHeightCm(100);
-    } else {
+    } else if (cat === 'papan_reklame') {
       setModalSubCategory('reklame_flexi_korea');
       setModalLengthCm(300);
       setModalHeightCm(100);
+    } else {
+      setModalSubCategory('tiang_pipa_3');
+      setModalPoleHeightMeter(3);
     }
   };
 
@@ -130,6 +182,21 @@ export default function CalculatorPage() {
     setModalText('');
     setModalQuantity(1);
     setModalCustomDesc('');
+    setIsModalOpen(true);
+  };
+
+  // Open Modal for Editing Item
+  const handleOpenEditItem = (item: MultiItemLine) => {
+    setEditingItemId(item.id);
+    const cat = (item.itemType as any) || 'huruf_timbul';
+    setModalCategory(cat);
+    setModalSubCategory(item.material || 'stainless_biasa_led');
+    setModalText(item.textOrLabel || '');
+    setModalCharCount(item.charCount || 10);
+    setModalHeightCm(item.heightCm || 20);
+    setModalLengthCm(item.widthCm || 100);
+    setModalQuantity(item.quantity || 1);
+    setModalCustomDesc(item.description || '');
     setIsModalOpen(true);
   };
 
@@ -144,6 +211,10 @@ export default function CalculatorPage() {
       text: modalText,
       charCount: modalCategory === 'huruf_timbul' ? (modalText.replace(/\s+/g, '').length || Number(modalCharCount)) : undefined,
       lightingType: modalSubCategory.includes('led') ? 'led_ip68_waterproof' : 'none',
+      needPoleConstruction: modalCategory === 'tiang',
+      poleHeightMeter: modalCategory === 'tiang' ? modalPoleHeightMeter : undefined,
+      needPondasiCakarAyam: modalCategory === 'tiang' ? modalPondasi : undefined,
+      pondasiPoints: modalCategory === 'tiang' ? modalPondasiPoints : undefined,
       floorLevel: 1,
       targetMarginPercent: 35,
     };
@@ -163,9 +234,14 @@ export default function CalculatorPage() {
       desc = modalCustomDesc || (modalSubCategory === 'neon_box_2sisi' ? 'Neon Box Akrilik 2 Sisi' : 'Neon Box Akrilik 1 Sisi');
       dims = `${modalLengthCm} x ${modalHeightCm} cm (${itemPricing.material.areaM2} m²)`;
       specs = itemPricing.material.materialDescription;
-    } else {
+    } else if (modalCategory === 'papan_reklame') {
       desc = modalCustomDesc || 'Papan Reklame Flexi Korea';
       dims = `${modalLengthCm} x ${modalHeightCm} cm (${itemPricing.material.areaM2} m²)`;
+      specs = itemPricing.material.materialDescription;
+    } else {
+      // Tiang & Konstruksi
+      desc = modalCustomDesc || `Konstruksi Tiang ${modalSubCategory === 'tiang_pipa_2' ? 'Pipa Besi 2"' : modalSubCategory === 'tiang_pipa_4' ? 'Pipa Besi 4"' : modalSubCategory === 'tiang_pipa_6' ? 'Pipa Besi 6"' : modalSubCategory === 'rangka_hollow' ? 'Rangka Hollow/Siku' : 'Pipa Besi 3"'}`;
+      dims = `Tinggi ${modalPoleHeightMeter} Meter${modalPondasi ? ` (${modalPondasiPoints} Titik Cakar Ayam)` : ''}`;
       specs = itemPricing.material.materialDescription;
     }
 
@@ -198,26 +274,21 @@ export default function CalculatorPage() {
       setItems([...items, newItem]);
     }
 
+    // AUTO-RESET HARGA NEGO: Agar penambahan item merefleksikan harga riil akumulasi baru
+    setCustomDealPrice(null);
     setIsModalOpen(false);
   };
 
-  // Hapus Baris Item
+  // Hapus Baris Item & Auto-reset Nego
   const handleDeleteItem = (id: string) => {
     setItems(items.filter((it) => it.id !== id));
-  };
-
-  // Terapkan Nego ke Seluruh Item Proporsional (Tanpa kata diskon)
-  const handleApplyNegotiationToItems = () => {
-    if (!customDealPrice || customDealPrice <= 0 || items.length === 0) return;
-    const distributed = distributeNegotiatedTotal(items, customDealPrice);
-    setItems(distributed);
-    setCustomDealPrice(null); // kembali sinkron
+    setCustomDealPrice(null); // AUTO-RESET
   };
 
   // Kirim WhatsApp Ringkas
   const handleSendWhatsApp = () => {
     if (!clientName || !clientPhone) {
-      alert('Silakan isi Nama Klien dan Nomor WhatsApp terlebih dahulu.');
+      alert('Silakan isi Nama Usaha Klien dan Nomor WhatsApp terlebih dahulu.');
       return;
     }
 
@@ -243,11 +314,11 @@ export default function CalculatorPage() {
     window.open(url, '_blank');
   };
 
-  // Simpan Penawaran Resmi ke Database
+  // Simpan atau Perbarui Penawaran Resmi ke Database
   const handleSaveQuotation = async () => {
     setErrorMessage('');
     if (!clientName || !clientPhone) {
-      setErrorMessage('Nama Klien dan Nomor WhatsApp wajib diisi.');
+      setErrorMessage('Nama Usaha Klien dan Nomor WhatsApp wajib diisi.');
       return;
     }
     if (items.length === 0) {
@@ -255,43 +326,83 @@ export default function CalculatorPage() {
       return;
     }
 
+    // Jika ada penyesuaian harga nego lapangan, sebarkan proporsional ke unit price tanpa baris diskon terpisah
+    const finalItems = customDealPrice && customDealPrice > 0 && customDealPrice !== baseSubtotal
+      ? distributeNegotiatedTotal(items, effectiveGrandTotal)
+      : items;
+
     setIsSubmitting(true);
     try {
-      const res = await createQuotationAction({
-        branch: branchId,
-        projectName: projectName || `Signage - ${clientName}`,
-        clientName,
-        picName,
-        clientPhone,
-        installationAddress,
-        subtotal: baseSubtotal,
-        discountType: enableSpecialDiscount ? 'fixed' : undefined,
-        discountValue: enableSpecialDiscount ? discountValue : 0,
-        discountNote: enableSpecialDiscount ? discountNote : undefined,
-        totalDeal: effectiveGrandTotal,
-        totalHpp: baseHppTotal,
-        items: items.map((it) => ({
-          itemType: it.itemType,
-          description: it.description,
-          specifications: it.specifications,
-          textOrLabel: it.textOrLabel,
-          charCount: it.charCount,
-          heightCm: it.heightCm,
-          widthCm: it.widthCm,
-          material: it.material,
-          lighting: it.lighting,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          sellingPrice: it.sellingPrice,
-          unitHpp: it.unitHpp,
-          hppPrice: it.hppPrice,
-        })),
-      });
+      if (isEditMode && editId) {
+        // MODE UPDATE
+        const res = await updateQuotationAction(editId, {
+          branch: branchId,
+          projectName: projectName || `Signage - ${clientName}`,
+          clientName,
+          picName,
+          clientPhone,
+          installationAddress,
+          subtotal: baseSubtotal,
+          totalDeal: effectiveGrandTotal,
+          totalHpp: baseHppTotal,
+          items: finalItems.map((it) => ({
+            itemType: it.itemType,
+            description: it.description,
+            specifications: it.specifications,
+            textOrLabel: it.textOrLabel,
+            charCount: it.charCount,
+            heightCm: it.heightCm,
+            widthCm: it.widthCm,
+            material: it.material,
+            lighting: it.lighting,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            sellingPrice: it.sellingPrice,
+            unitHpp: it.unitHpp,
+            hppPrice: it.hppPrice,
+          })),
+        });
 
-      if (res.success && res.projectId) {
-        router.push(`/projects/${res.projectId}`);
+        if (res.success) {
+          router.push(`/projects/${editId}`);
+        } else {
+          setErrorMessage(res.error || 'Terjadi kesalahan saat memperbarui penawaran.');
+        }
       } else {
-        setErrorMessage(res.error || 'Terjadi kesalahan saat menyimpan.');
+        // MODE CREATE BARU
+        const res = await createQuotationAction({
+          branch: branchId,
+          projectName: projectName || `Signage - ${clientName}`,
+          clientName,
+          picName,
+          clientPhone,
+          installationAddress,
+          subtotal: baseSubtotal,
+          totalDeal: effectiveGrandTotal,
+          totalHpp: baseHppTotal,
+          items: finalItems.map((it) => ({
+            itemType: it.itemType,
+            description: it.description,
+            specifications: it.specifications,
+            textOrLabel: it.textOrLabel,
+            charCount: it.charCount,
+            heightCm: it.heightCm,
+            widthCm: it.widthCm,
+            material: it.material,
+            lighting: it.lighting,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            sellingPrice: it.sellingPrice,
+            unitHpp: it.unitHpp,
+            hppPrice: it.hppPrice,
+          })),
+        });
+
+        if (res.success && res.projectId) {
+          router.push(`/projects/${res.projectId}`);
+        } else {
+          setErrorMessage(res.error || 'Terjadi kesalahan saat menyimpan.');
+        }
       }
     } catch (e: any) {
       setErrorMessage(e.message || 'Terjadi kesalahan sistem.');
@@ -299,6 +410,16 @@ export default function CalculatorPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoadingProject) {
+    return (
+      <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto my-12">
+        <Loader2 className="w-8 h-8 text-rose-600 animate-spin mx-auto mb-3" />
+        <h2 className="font-bold text-slate-900 text-sm">Memuat Data Penawaran...</h2>
+        <p className="text-xs text-slate-500 mt-1">Mengambil rincian item reklame untuk mode edit.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -309,9 +430,16 @@ export default function CalculatorPage() {
             <span className="p-2 bg-rose-50 text-rose-600 rounded-xl">
               <Calculator className="w-5 h-5" />
             </span>
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">
-              Pembuat Penawaran Resmi (Multi-Item)
-            </h1>
+            <div>
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">
+                {isEditMode ? 'Edit Penawaran Proyek (Multi-Item)' : 'Pembuat Penawaran Resmi (Multi-Item)'}
+              </h1>
+              {isEditMode && (
+                <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                  Mode Perubahan Aktif
+                </span>
+              )}
+            </div>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             Susun multi-item reklame, hitung negosiasi dua arah, dan terbitkan penawaran resmi Salsabilla.
@@ -340,11 +468,11 @@ export default function CalculatorPage() {
               <select
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
-                className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                className="font-bold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name}
+                    Cabang {b.city}
                   </option>
                 ))}
               </select>
@@ -364,74 +492,84 @@ export default function CalculatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left (7 cols): Data Klien & Daftar Multi-Item */}
         <div className="lg:col-span-7 space-y-5">
-          {/* 1. Header Informasi Klien (Clean Inputs) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+          {/* 1. Header Informasi Proyek & Klien (Clean Inputs) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
               <User className="w-4 h-4 text-rose-600" />
-              1. Informasi Klien & Lokasi Pasang
+              1. Informasi Proyek & Klien
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="space-y-3 text-xs">
+              {/* Baris 1: Judul Pekerjaan Proyek (Di Atas & Dominan) */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Nama Toko / Usaha / Klien <span className="text-rose-600">*</span>
+                  Judul Pekerjaan Proyek <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Contoh: Kopi Kenangan"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama PIC Kontak</label>
-                <input
-                  type="text"
-                  value={picName}
-                  onChange={(e) => setPicName(e.target.value)}
-                  placeholder="Contoh: Bu Bella"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Nomor WhatsApp <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="Contoh: 081299887766"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Judul Pekerjaan Proyek</label>
-                <input
-                  type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Contoh: Signage Outlet Dago"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
+                  placeholder="Contoh: Pekerjaan Signage Huruf Timbul Rotio Outlet Dago"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">Alamat Pemasangan Lengkap</label>
-                <input
-                  type="text"
-                  value={installationAddress}
-                  onChange={(e) => setInstallationAddress(e.target.value)}
-                  placeholder="Contoh: Jl. Dago No. 12, Bandung (Lantai 2)"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
-                />
+              {/* Baris 2: Nama Usaha Klien & PIC Kontak */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Nama Usaha / Toko Klien <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="Contoh: Kopi Kenangan / Rotio"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nama PIC Kontak</label>
+                  <input
+                    type="text"
+                    value={picName}
+                    onChange={(e) => setPicName(e.target.value)}
+                    placeholder="Contoh: Bu Bella"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+              </div>
+
+              {/* Baris 3: WhatsApp & Alamat Pemasangan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Nomor WhatsApp <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="Contoh: 081299887766"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Alamat Pemasangan Lengkap</label>
+                  <input
+                    type="text"
+                    value={installationAddress}
+                    onChange={(e) => setInstallationAddress(e.target.value)}
+                    placeholder="Contoh: Jl. Dago No. 12, Bandung (Lantai 2)"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -445,27 +583,27 @@ export default function CalculatorPage() {
                   2. Rincian Item Reklame ({items.length} Item)
                 </h2>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Bisa menambahkan banyak produk sekaligus dalam 1 dokumen.
+                  Bisa menambahkan banyak produk sekaligus dalam 1 dokumen penawaran.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={handleOpenNewItem}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
               >
-                <Plus className="w-4 h-4" />
-                <span>+ Tambah Item</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Item</span>
               </button>
             </div>
 
-            {/* List of Line Items */}
+            {/* List Item Table / Cards */}
             {items.length === 0 ? (
               <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-2">
                 <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-                <p className="text-xs font-bold text-slate-600">Belum ada item produk ditambahkan.</p>
+                <p className="text-xs font-bold text-slate-600">Belum ada item reklame ditambahkan.</p>
                 <p className="text-[11px] text-slate-400">
-                  Klik tombol <strong>&quot;+ Tambah Item&quot;</strong> di atas untuk memasukkan Neon Box, Huruf Timbul, atau Tiang.
+                  Klik tombol &quot;Tambah Item&quot; untuk memilih Huruf Timbul, Neon Box, Papan Reklame, atau Tiang.
                 </p>
               </div>
             ) : (
@@ -473,29 +611,31 @@ export default function CalculatorPage() {
                 {items.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 transition"
+                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/70 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-slate-200 font-mono font-bold text-[10px] text-slate-700 flex items-center justify-center">
-                          {idx + 1}
+                        <span className="font-bold text-slate-400 text-[11px]">#{idx + 1}</span>
+                        <span className="font-extrabold text-slate-900 text-sm">
+                          {item.description}
                         </span>
-                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{item.description}</h4>
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white border border-slate-200 text-slate-700 uppercase">
                           {item.itemType}
                         </span>
                       </div>
-                      <p className="text-slate-600 text-[11px] pl-7">
-                        Dimensi: <strong className="text-slate-800">{item.dimensions}</strong> • Qty: {item.quantity}x
+                      <p className="text-slate-600 text-[11px]">
+                        {item.dimensions ? `Ukuran: ${item.dimensions} • ` : ''}
+                        Bahan: <strong className="text-slate-800">{getMaterialDisplayLabel(item.material)}</strong>
                       </p>
-                      <p className="text-slate-500 text-[10px] pl-7">{item.specifications}</p>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-7 sm:pl-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                       <div className="text-right">
-                        <span className="text-[9px] text-slate-400 uppercase font-bold block">Subtotal:</span>
-                        <span className="font-black text-slate-900 text-xs sm:text-sm">
+                        <span className="font-black text-slate-900 text-sm block">
                           {formatRupiah(item.sellingPrice)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          {item.quantity}x @ {formatRupiah(item.unitPrice)}
                         </span>
                         {!hideConfidential && (
                           <span className="text-[10px] text-slate-400 block">
@@ -504,14 +644,24 @@ export default function CalculatorPage() {
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        title="Hapus Baris Item"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditItem(item)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                          title="Edit Baris Item"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          title="Hapus Baris Item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -580,7 +730,13 @@ export default function CalculatorPage() {
                 className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-rose-50 text-rose-700 font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Penawaran Resmi'}</span>
+                <span>
+                  {isSubmitting
+                    ? 'Menyimpan...'
+                    : isEditMode
+                    ? 'Perbarui Penawaran (Simpan Perubahan)'
+                    : 'Simpan Penawaran Resmi'}
+                </span>
               </button>
 
               <button
@@ -594,15 +750,26 @@ export default function CalculatorPage() {
             </div>
           </div>
 
-          {/* Negotiated Input (Two-Way Field) */}
+          {/* SIMPLIFIED NEGOTIATION / NEGO LAPANGAN (REAKTIF & PROFESSIONAL) */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 text-xs">
-            <span className="font-black uppercase tracking-wider text-slate-800 text-[11px] block">
-              Tawar-Menawar / Nego Lapangan:
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="font-black uppercase tracking-wider text-slate-800 text-[11px] block">
+                Tawar-Menawar / Nego Lapangan:
+              </span>
+              {customDealPrice && customDealPrice > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCustomDealPrice(null)}
+                  className="text-[11px] text-rose-600 font-bold hover:underline flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" /> Reset Normal
+                </button>
+              )}
+            </div>
 
             <div>
               <label className="block text-[11px] text-slate-600 mb-1">
-                Ketik Harga Kesepakatan Nego (Bulat):
+                Ketik Harga Kesepakatan Final (Nego):
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-2.5 font-bold text-slate-400 text-xs">Rp</span>
@@ -611,89 +778,57 @@ export default function CalculatorPage() {
                   inputMode="numeric"
                   value={customDealPrice || ''}
                   onChange={(e) => setCustomDealPrice(Number(e.target.value) || null)}
-                  placeholder={baseSubtotal.toString()}
+                  placeholder={baseSubtotal > 0 ? baseSubtotal.toString() : '0'}
                   className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-black text-slate-900 text-sm focus:ring-2 focus:ring-rose-500"
                 />
               </div>
             </div>
 
             {customDealPrice && customDealPrice > 0 && (
-              <button
-                type="button"
-                onClick={handleApplyNegotiationToItems}
-                className="w-full py-2 px-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] border border-indigo-200 transition cursor-pointer"
-              >
-                🔄 Terapkan Nego ke Seluruh Item (Tanpa Kata Diskon)
-              </button>
-            )}
-
-            {/* Special Bulk Discount Toggle (Untuk Proyek Besar/Tender) */}
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={enableSpecialDiscount}
-                  onChange={(e) => setEnableSpecialDiscount(e.target.checked)}
-                  className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4"
-                />
-                <span>+ Diskon Khusus Proyek (Khusus Borongan)</span>
-              </label>
-
-              {enableSpecialDiscount && (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-0.5">Potongan (Rp)</label>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={discountValue}
-                      onChange={(e) => setDiscountValue(Number(e.target.value))}
-                      placeholder="1000000"
-                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-0.5">Label Keterangan</label>
-                    <input
-                      type="text"
-                      value={discountNote}
-                      onChange={(e) => setDiscountNote(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900"
-                    />
-                  </div>
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span>Harga Normal Akumulasi:</span>
+                  <span className="font-bold text-slate-800">{formatRupiah(baseSubtotal)}</span>
                 </div>
-              )}
-            </div>
+                <div className="flex justify-between items-center text-rose-600 font-bold">
+                  <span>Penyesuaian Nego:</span>
+                  <span>{formatRupiah(customDealPrice - baseSubtotal)}</span>
+                </div>
+                <p className="text-[10px] text-slate-400 italic pt-0.5">
+                  *Otomatis didistribusikan ke harga satuan tiap item saat disimpan, tanpa mencantumkan kata diskon di dokumen klien.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* MODAL / DRAWER TAMBAH ITEM PRODUK REKLAME */}
+      {/* MODAL INPUT ITEM REKLAME MODULAR */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-slate-200 space-y-4 my-8">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-8 border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-900 text-sm uppercase">
-                Tambah Item Produk Reklame
+              <h3 className="font-extrabold text-sm text-slate-900 uppercase">
+                {editingItemId ? 'Edit Baris Item' : 'Tambah Item Produk Reklame'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-800"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Category Selector Tabs */}
-            <div className="grid grid-cols-3 gap-1.5 text-xs font-bold">
+            {/* 4 Category Tabs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => handleModalCategoryChange('huruf_timbul')}
                 className={`py-2 px-1 rounded-xl border text-center transition ${
                   modalCategory === 'huruf_timbul'
                     ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 Huruf Timbul
@@ -704,7 +839,7 @@ export default function CalculatorPage() {
                 className={`py-2 px-1 rounded-xl border text-center transition ${
                   modalCategory === 'neon_box'
                     ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 Neon Box
@@ -715,16 +850,27 @@ export default function CalculatorPage() {
                 className={`py-2 px-1 rounded-xl border text-center transition ${
                   modalCategory === 'papan_reklame'
                     ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                Papan Reklame
+                Billboard
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModalCategoryChange('tiang')}
+                className={`py-2 px-1 rounded-xl border text-center transition ${
+                  modalCategory === 'tiang'
+                    ? 'bg-rose-600 text-white border-rose-600'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                Tiang & Pondasi
               </button>
             </div>
 
-            {/* Material Dropdown */}
+            {/* Material & Specification Dropdown */}
             <div className="text-xs">
-              <label className="block font-bold text-slate-700 mb-1">Pilihan Material & Tarif Resmi:</label>
+              <label className="block font-bold text-slate-700 mb-1">Pilihan Spesifikasi & Tarif Resmi:</label>
               {modalCategory === 'huruf_timbul' && (
                 <select
                   value={modalSubCategory}
@@ -761,10 +907,24 @@ export default function CalculatorPage() {
                   <option value="billboard_heavy_duty">Rangka Billboard Besi Siku Heavy Duty — Rp 1.350.000 / m²</option>
                 </select>
               )}
+
+              {modalCategory === 'tiang' && (
+                <select
+                  value={modalSubCategory}
+                  onChange={(e) => setModalSubCategory(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                >
+                  <option value="tiang_pipa_3">Tiang Pipa Besi 3 Inch — Rp 250.000 / meter</option>
+                  <option value="tiang_pipa_2">Tiang Pipa Besi 2 Inch — Rp 175.000 / meter</option>
+                  <option value="tiang_pipa_4">Tiang Pipa Besi 4 Inch — Rp 375.000 / meter</option>
+                  <option value="tiang_pipa_6">Tiang Pipa Besi 6 Inch Schedule — Rp 650.000 / meter</option>
+                  <option value="rangka_hollow">Rangka Besi Hollow & Siku — Rp 150.000 / meter</option>
+                </select>
+              )}
             </div>
 
-            {/* Dimension Inputs */}
-            {modalCategory === 'huruf_timbul' ? (
+            {/* Dimension Inputs per Category */}
+            {modalCategory === 'huruf_timbul' && (
               <div className="space-y-2.5 text-xs">
                 <div>
                   <label className="block font-medium text-slate-600 mb-1">Teks / Kata Huruf Timbul:</label>
@@ -803,7 +963,9 @@ export default function CalculatorPage() {
                   </div>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {(modalCategory === 'neon_box' || modalCategory === 'papan_reklame') && (
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <label className="block font-medium text-slate-600 mb-1">Panjang (cm):</label>
@@ -824,6 +986,45 @@ export default function CalculatorPage() {
                     onChange={(e) => setModalHeightCm(Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
                   />
+                </div>
+              </div>
+            )}
+
+            {modalCategory === 'tiang' && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="block font-medium text-slate-600 mb-1">Tinggi Tiang (Meter):</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={modalPoleHeightMeter}
+                    onChange={(e) => setModalPoleHeightMeter(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                  />
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={modalPondasi}
+                      onChange={(e) => setModalPondasi(e.target.checked)}
+                      className="rounded text-rose-600 w-4 h-4"
+                    />
+                    <span>+ Tambah Pondasi Cor Cakar Ayam</span>
+                  </label>
+                  {modalPondasi && (
+                    <div>
+                      <label className="block text-[11px] text-slate-500 mb-1">Jumlah Titik Cakar Ayam:</label>
+                      <input
+                        type="number"
+                        value={modalPondasiPoints}
+                        onChange={(e) => setModalPondasiPoints(Number(e.target.value))}
+                        min={1}
+                        max={6}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -863,9 +1064,9 @@ export default function CalculatorPage() {
               <button
                 type="button"
                 onClick={handleSaveItemFromModal}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs"
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
               >
-                Masukkan ke Daftar
+                {editingItemId ? 'Simpan Perubahan Item' : 'Masukkan ke Daftar'}
               </button>
             </div>
           </div>
@@ -891,13 +1092,28 @@ export default function CalculatorPage() {
             type="button"
             onClick={handleSaveQuotation}
             disabled={isSubmitting}
-            className="py-2.5 px-3 rounded-xl bg-rose-600 text-white font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
+            className="py-2.5 px-3 rounded-xl bg-rose-600 text-white font-black text-xs flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>Simpan</span>
+            <span>{isEditMode ? 'Update' : 'Simpan'}</span>
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CalculatorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto my-12">
+          <Loader2 className="w-8 h-8 text-rose-600 animate-spin mx-auto mb-3" />
+          <h2 className="font-bold text-slate-900 text-sm">Memuat Kalkulator...</h2>
+        </div>
+      }
+    >
+      <CalculatorContent />
+    </Suspense>
   );
 }

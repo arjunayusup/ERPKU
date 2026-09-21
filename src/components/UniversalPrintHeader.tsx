@@ -39,7 +39,7 @@ export default function UniversalPrintHeader({
             <h1 className="text-base font-extrabold tracking-tight text-slate-900 uppercase leading-none">
               SALSABILLA ADVERTISING
             </h1>
-            <p className="text-[10px] font-bold tracking-wider text-rose-600 uppercase mt-0.5">
+            <p className="text-[10px] font-bold tracking-wider text-slate-700 uppercase mt-0.5">
               INDOOR - OUTDOOR SIGNAGE & REKLAME
             </p>
             <p className="text-[10.5px] text-slate-700 leading-snug mt-1 font-medium">

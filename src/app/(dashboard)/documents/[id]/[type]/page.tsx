@@ -5,6 +5,7 @@ import { ShieldCheck, ArrowLeft } from 'lucide-react';
 import UniversalPrintHeader from '@/components/UniversalPrintHeader';
 import PrintButton from './PrintButton';
 import { getBranchConfig, getAllBranches } from '@/lib/branches';
+import { getMaterialDisplayLabel, calculateLedModules } from '@/lib/calculator-modular';
 
 export default async function DocumentPage({
   params,
@@ -185,7 +186,7 @@ export default async function DocumentPage({
                         <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
                           {item.description}
                           {item.textOrLabel && (
-                            <span className="block font-mono text-rose-600 text-[10px] mt-0.5">
+                            <span className="block font-mono text-slate-800 text-[10px] mt-0.5 font-semibold">
                               Teks: &quot;{item.textOrLabel}&quot;
                             </span>
                           )}
@@ -194,7 +195,7 @@ export default async function DocumentPage({
                           {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
                         </td>
                         <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
-                          <p>• {item.specifications || item.material}</p>
+                          <p>• {item.specifications || getMaterialDisplayLabel(item.material)}</p>
                           {item.lighting && item.lighting !== 'none' && (
                             <p>• Sistem Penerangan: {item.lighting === 'frontlit' ? 'LED Frontlit' : 'LED Backlight Siluet'}</p>
                           )}
@@ -238,7 +239,7 @@ export default async function DocumentPage({
                           {formatRupiah(project.subtotal || project.totalDeal)}
                         </td>
                       </tr>
-                      <tr className="bg-rose-50/40 font-bold text-rose-700 border-t border-slate-300">
+                      <tr className="bg-slate-50 font-bold text-slate-700 border-t border-slate-300">
                         <td colSpan={6} className="p-2 border-r border-slate-900 text-right uppercase text-[11px]">
                           {project.discountNote || 'Diskon Khusus Proyek'}
                         </td>
@@ -323,10 +324,10 @@ export default async function DocumentPage({
               </div>
               <div className="text-right">
                 <p className="text-slate-500 font-bold uppercase text-[10px]">Informasi Produksi:</p>
-                <p className="font-bold text-slate-900">Cabang: <span className="font-extrabold text-rose-600">{branch.name}</span></p>
+                <p className="font-bold text-slate-900">Cabang: <span className="font-extrabold text-slate-900">{branch.name}</span></p>
                 <p className="text-slate-700 mt-0.5">Target Selesai: <strong className="text-slate-900">12 Hari Kerja</strong></p>
-                <p className="text-rose-600 font-bold text-[10px] mt-1 uppercase tracking-wider">
-                  ⚠️ DOKUMEN RAHASIA BENGKEL (TANPA NILAI HARGA)
+                <p className="text-slate-700 font-bold text-[10px] mt-1 uppercase tracking-wider">
+                  ⚠️ DOKUMEN BENGKEL / WORK ORDER (NO-PRICE)
                 </p>
               </div>
             </div>
@@ -347,30 +348,50 @@ export default async function DocumentPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-400">
-                  {project.items.map((item, idx) => (
-                    <tr key={item.id}>
-                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
-                      <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
-                        {item.description}
-                        {item.textOrLabel && (
-                          <div className="font-mono text-rose-600 font-bold text-[11px] mt-0.5">
-                            Teks: &quot;{item.textOrLabel}&quot;
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-2.5 border-r border-slate-900 text-center font-bold">
-                        {item.heightCm} x {item.widthCm} cm
-                      </td>
-                      <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
-                        <p className="font-semibold text-slate-900">{item.material}</p>
-                        <p className="text-slate-500 text-[10px]">Rangka: Hollow 4x4 Galvanis / Lis Profil</p>
-                      </td>
-                      <td className="p-2.5 text-center font-semibold text-slate-800">
-                        <p className="font-bold text-rose-600">{item.ledCount || 0} Modul LED</p>
-                        <p className="text-[10px] text-slate-600">Trafo: {item.trafoWatt || 100}W Rainproof</p>
-                      </td>
-                    </tr>
-                  ))}
+                  {project.items.map((item, idx) => {
+                    const ledInfo = calculateLedModules({
+                      category: item.itemType,
+                      subCategory: item.material,
+                      material: item.material,
+                      heightCm: item.heightCm || undefined,
+                      charCount: item.charCount || undefined,
+                      lightingType: item.lighting || undefined,
+                    });
+
+                    return (
+                      <tr key={item.id}>
+                        <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
+                        <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
+                          {item.description}
+                          {item.textOrLabel && (
+                            <div className="font-mono text-slate-900 font-bold text-[11px] mt-0.5">
+                              Teks: &quot;{item.textOrLabel}&quot;
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-900 text-center font-bold">
+                          {item.heightCm && item.widthCm ? `${item.heightCm} x ${item.widthCm} cm` : item.heightCm ? `Tinggi ${item.heightCm} cm` : '-'}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
+                          <p className="font-semibold text-slate-900">{getMaterialDisplayLabel(item.material)}</p>
+                          <p className="text-slate-500 text-[10px]">Rangka: Hollow 4x4 Galvanis / Lis Profil</p>
+                        </td>
+                        <td className="p-2.5 text-center font-semibold text-slate-800">
+                          {ledInfo.isIlluminated ? (
+                            <>
+                              <p className="font-bold text-slate-900">{item.ledCount || ledInfo.ledCount} Modul LED</p>
+                              <p className="text-[10px] text-slate-600">Trafo: {item.trafoWatt || ledInfo.trafoWatt}W Rainproof</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-bold text-slate-600">Non-Lampu</p>
+                              <p className="text-[10px] text-slate-400">Tanpa LED / Trafo</p>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -385,8 +406,8 @@ export default async function DocumentPage({
                   <p className="font-bold text-slate-900">               ▼</p>
                   <p className="font-bold text-slate-900">      [TRAFO 12V RAINPROOF]</p>
                   <p className="pl-14">│</p>
-                  <p className="font-bold text-rose-600">      ├─► Jalur 1 (Max 50 Modul LED Paralel)</p>
-                  <p className="font-bold text-rose-600">      └─► Jalur 2 (Max 50 Modul LED Paralel)</p>
+                  <p className="font-bold text-slate-800">      ├─► Jalur 1 (Max 50 Modul LED Paralel)</p>
+                  <p className="font-bold text-slate-800">      └─► Jalur 2 (Max 50 Modul LED Paralel)</p>
                 </div>
                 <p className="text-[9.5px] text-slate-500 mt-1">
                   *Wajib pasang paralel tiap 50 modul untuk mencegah voltage drop redup di ujung.
@@ -434,7 +455,7 @@ export default async function DocumentPage({
               </div>
               <div className="text-right">
                 <p className="text-slate-500 font-bold uppercase text-[10px]">Armada & Pengemudi:</p>
-                <p className="font-bold text-slate-900">Kendaraan: <span className="font-mono text-rose-600">Mobil Pikap Gran Max</span></p>
+                <p className="font-bold text-slate-900">Kendaraan: <span className="font-mono font-bold text-slate-900">Mobil Pikap Gran Max</span></p>
                 <p className="text-slate-700">No. Polisi: <strong className="text-slate-900">B 9147 TPA</strong></p>
                 <p className="text-slate-700">Pengemudi: <strong className="text-slate-900">Kang Asep / Tim Ekspedisi</strong></p>
               </div>
@@ -511,7 +532,7 @@ export default async function DocumentPage({
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <p className="font-bold text-slate-900">Pihak Pertama (Pelaksana):</p>
-                  <p className="font-semibold text-rose-600">{branch.name}</p>
+                  <p className="font-semibold text-slate-900">{branch.name}</p>
                   <p className="text-slate-600">{branch.address}</p>
                 </div>
                 <div>
@@ -585,7 +606,7 @@ export default async function DocumentPage({
                 <p className="text-slate-500 font-bold uppercase text-[10px]">Referensi Dokumen:</p>
                 <p className="text-slate-700">No. Quotation: <strong className="text-slate-900">Q-{project.projectNumber.replace('PRJ-', '')}</strong></p>
                 <p className="text-slate-700">No. SPK: <strong className="text-slate-900">SPK-{project.projectNumber.replace('PRJ-', '')}</strong></p>
-                <span className="inline-block mt-1 px-2.5 py-0.5 rounded font-extrabold text-[10px] bg-rose-600 text-white uppercase">
+                <span className="inline-block mt-1 px-2.5 py-0.5 rounded font-extrabold text-[10px] bg-slate-900 text-white uppercase">
                   {isDP ? 'TERMIN 1: UANG MUKA (DP 50%)' : 'TERMIN 2: PELUNASAN (50%)'}
                 </span>
               </div>
@@ -612,7 +633,7 @@ export default async function DocumentPage({
                   <td className="p-3 border-r border-slate-900 text-right font-semibold">
                     {formatRupiah(project.totalDeal)}
                   </td>
-                  <td className="p-3 border-r border-slate-900 text-right font-bold text-rose-600">
+                  <td className="p-3 border-r border-slate-900 text-right font-bold text-slate-900">
                     50%
                   </td>
                   <td className="p-3 text-right font-extrabold text-slate-900 text-sm">
@@ -625,7 +646,7 @@ export default async function DocumentPage({
                   <td colSpan={3} className="p-3 border-r border-slate-900 text-right uppercase">
                     Total Tagihan Saat Ini
                   </td>
-                  <td className="p-3 text-right text-base text-rose-700">
+                  <td className="p-3 text-right text-base font-black text-slate-900">
                     {formatRupiah(invoiceAmount)}
                   </td>
                 </tr>
@@ -638,7 +659,7 @@ export default async function DocumentPage({
               <p className="text-slate-700">Pembayaran dapat ditransfer ke rekening resmi:</p>
               <div className="font-mono text-xs pt-1 space-y-0.5">
                 <p>Bank: <strong className="text-slate-900 font-sans">{branch.bankName}</strong></p>
-                <p>No. Rekening: <strong className="text-rose-700 text-sm">{branch.bankAccount}</strong></p>
+                <p>No. Rekening: <strong className="text-slate-900 font-mono text-sm font-bold">{branch.bankAccount}</strong></p>
                 <p>Atas Nama: <strong className="text-slate-900 font-sans">{branch.bankAccountName}</strong></p>
               </div>
               <p className="text-[10.5px] text-slate-500 pt-1">
