@@ -34,24 +34,44 @@ async function main() {
     }
   });
 
-  // 2. Real Master Rates Salsabilla
+  // 2. Official Master Rates Salsabilla Advertising (Update 2026)
   const rates = [
-    { name: 'Huruf Timbul Stainless 304 Mirror', category: 'huruf_timbul', unit: 'cm', costPrice: 7500, sellPrice: 13500, notes: 'Outdoor anti karat' },
-    { name: 'Huruf Timbul Stainless 201 Hairline', category: 'huruf_timbul', unit: 'cm', costPrice: 5500, sellPrice: 11000, notes: 'Serat garis hairline' },
-    { name: 'Huruf Timbul Akrilik Solid + Spon EVA', category: 'huruf_timbul', unit: 'cm', costPrice: 6000, sellPrice: 12000, notes: 'Marga Cipta 3mm' },
-    { name: 'Huruf Timbul Galvanis Cat Duco Oven', category: 'huruf_timbul', unit: 'cm', costPrice: 4200, sellPrice: 8500, notes: 'Cat duco glossy/matte' },
-    { name: 'Neon Box Akrilik 2 Muka Cutting Oracal', category: 'neon_box', unit: 'm2', costPrice: 850000, sellPrice: 1600000, notes: 'Rangka hollow 4x4' },
-    { name: 'Neon Box Akrilik 2 Muka Print UV', category: 'neon_box', unit: 'm2', costPrice: 1100000, sellPrice: 2000000, notes: 'Flatbed UV print' },
-    { name: 'Neon Box Flexy Backlite Jerman', category: 'neon_box', unit: 'm2', costPrice: 650000, sellPrice: 1300000, notes: 'Hi-Res outdoor' },
+    // A. HURUF TIMBUL (Per cm tinggi/huruf)
+    { name: 'Huruf Timbul Galvanis Cat Duco (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Plat galvanis bending las + finishing cat duco oven' },
+    { name: 'Huruf Timbul Akrilik Solid (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Akrilik solid Marga Cipta 3mm' },
+    { name: 'Huruf Timbul Stainless Steel (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 6500, sellPrice: 12000, notes: 'Stainless steel mirror / hairline 201/304' },
+    { name: 'Huruf Timbul Akrilik Dual Glow (Cahaya Depan & Belakang)', category: 'huruf_timbul', unit: 'cm', costPrice: 9500, sellPrice: 18000, notes: 'Akrilik muka & siluet belakang menyala LED' },
+    { name: 'Huruf Timbul Stainless Biasa + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 10500, sellPrice: 20000, notes: 'Badan stainless + backlight LED modul' },
+    { name: 'Huruf Timbul Stainless Gold Titanium + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 13500, sellPrice: 25000, notes: 'Stainless mirror gold titanium + LED modul' },
+
+    // B. NEON BOX (Per m2)
+    { name: 'Neon Box 1 Sisi Akrilik + Lampu TL (Tanpa Tiang)', category: 'neon_box', unit: 'm2', costPrice: 1050000, sellPrice: 1900000, notes: 'Rangka hollow 2x2, visual akrilik, lampu TL/LED tube' },
+    { name: 'Neon Box 2 Sisi Akrilik + Lampu TL (Tanpa Tiang)', category: 'neon_box', unit: 'm2', costPrice: 1550000, sellPrice: 2850000, notes: 'Rangka hollow 2x2, visual akrilik bolak-balik' },
+
+    // C. PAPAN REKLAME & BILLBOARD (Per m2)
+    { name: 'Papan Reklame Flexi Korea (Tanpa Tiang)', category: 'reklame', unit: 'm2', costPrice: 520000, sellPrice: 950000, notes: 'Rangka hollow 3x3, plat galvalum backplate, flexi korea printing' },
+    { name: 'Rangka Billboard Raksasa Besi Siku Heavy Duty', category: 'reklame', unit: 'm2', costPrice: 750000, sellPrice: 1350000, notes: 'Konstruksi siku 4x4 / 5x5 + pengaku angin' },
+
+    // D. TIANG KONSTRUKSI & PONDASI (Per meter / titik)
+    { name: 'Tiang Pipa Besi Medium 2 Inch', category: 'tiang', unit: 'm', costPrice: 105000, sellPrice: 175000, notes: 'Untuk neon box kecil <= 1m' },
+    { name: 'Tiang Pipa Besi Medium 3 Inch', category: 'tiang', unit: 'm', costPrice: 150000, sellPrice: 250000, notes: 'Untuk neon box standar & plang nama ruko' },
+    { name: 'Tiang Pipa Besi Medium 4 Inch', category: 'tiang', unit: 'm', costPrice: 230000, sellPrice: 375000, notes: 'Untuk papan reklame s/d 3x2m' },
+    { name: 'Tiang Pipa Besi Tebal 6 Inch', category: 'tiang', unit: 'm', costPrice: 420000, sellPrice: 650000, notes: 'Untuk tiang pylon / billboard besar' },
+    { name: 'Pondasi Cor Cakar Ayam + Angkur Baseplate', category: 'tiang', unit: 'titik', costPrice: 500000, sellPrice: 850000, notes: 'Galian pondasi beton K225 + dynabolt angkur' },
+
+    // E. STIKER & AKSESORIS KELISTRIKAN
+    { name: 'Cutting Sticker Oracal 651 Outdoor', category: 'aksesoris', unit: 'm2', costPrice: 135000, sellPrice: 250000, notes: 'Stiker logo neon box & kaca ruko' },
+    { name: 'Cutting Sticker Oracal 8500 Translucent', category: 'aksesoris', unit: 'm2', costPrice: 195000, sellPrice: 350000, notes: 'Khusus tembus cahaya lampu neon box' },
+    { name: 'Lampu Sorot LED Outdoor 50W', category: 'aksesoris', unit: 'pcs', costPrice: 155000, sellPrice: 275000, notes: 'Termasuk tiang bracket sorot' },
+    { name: 'Lampu Sorot LED Outdoor 100W Heavy Duty', category: 'aksesoris', unit: 'pcs', costPrice: 260000, sellPrice: 450000, notes: 'Untuk penerangan billboard malam hari' },
     { name: 'Modul LED Samsung IP68 Waterproof', category: 'led', unit: 'pcs', costPrice: 3800, sellPrice: 6500, notes: '1.2W / 1.5W per modul' },
-    { name: 'Trafo Rainproof 400W 12V', category: 'trafo', unit: 'pcs', costPrice: 185000, sellPrice: 285000, notes: 'Heavy duty outdoor' },
+    { name: 'Trafo Rainproof 400W 12V', category: 'trafo', unit: 'pcs', costPrice: 185000, sellPrice: 285000, notes: 'Heavy duty outdoor rainproof' },
   ];
 
+  // Bersihkan tarif lama dan masukkan tarif resmi baru
+  await prisma.materialRate.deleteMany({});
   for (const r of rates) {
-    const existing = await prisma.materialRate.findFirst({ where: { name: r.name } });
-    if (!existing) {
-      await prisma.materialRate.create({ data: r });
-    }
+    await prisma.materialRate.create({ data: r });
   }
 
   // 3. Official Sample Project: Ibu Bella (Ref: Surat Penawaran Asli Salsabilla)

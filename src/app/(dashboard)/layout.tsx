@@ -12,6 +12,8 @@ import {
   HardHat,
   MapPin
 } from 'lucide-react';
+import MobileBottomNav from '@/components/MobileBottomNav';
+import MobileTopBar from '@/components/MobileTopBar';
 
 export default async function DashboardLayout({
   children,
@@ -26,9 +28,12 @@ export default async function DashboardLayout({
   const isAdmin = session.role === 'admin';
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-800">
-      {/* Clean Light Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col no-print shrink-0 shadow-sm">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 text-slate-800">
+      {/* Mobile Top Header (Visible on mobile only) */}
+      <MobileTopBar userName={session.name} userRole={session.role} />
+
+      {/* Clean Light Sidebar (Desktop only) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col no-print shrink-0 shadow-sm min-h-screen sticky top-0 h-screen">
         {/* Brand Header with Official Salsabilla Logo */}
         <div className="p-5 border-b border-slate-100 flex flex-col items-center text-center">
           <div className="w-full flex justify-center mb-2">
@@ -135,8 +140,13 @@ export default async function DashboardLayout({
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50 min-h-screen">
-        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">{children}</div>
+        <div className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+          {children}
+        </div>
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav isAdmin={isAdmin} />
     </div>
   );
 }

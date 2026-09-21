@@ -70,6 +70,24 @@ export default async function DocumentPage({
   const isDP = terminType === 'dp';
   const invoiceAmount = project.totalDeal * 0.5;
 
+  // Smart Dynamic File Name
+  // Format: [DOKUMEN] - [ITEM_SPEK] - [CLIENT_NAME] - Salsabilla
+  const firstItem = project.items[0];
+  const itemSummary = firstItem 
+    ? `${firstItem.description.replace(/[^a-zA-Z0-9 ]/g, '')} ${firstItem.heightCm ? `${firstItem.heightCm}x${firstItem.widthCm}cm` : ''}`.trim()
+    : project.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
+  const cleanClient = project.clientName.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  
+  let docPrefix = 'DOKUMEN';
+  if (docType === 'quotation') docPrefix = 'PENAWARAN';
+  else if (docType === 'spk') docPrefix = 'SPK-BENGKEL';
+  else if (docType === 'surat_jalan') docPrefix = 'SURAT-JALAN';
+  else if (docType === 'bast') docPrefix = 'BAST-SERAH-TERIMA';
+  else if (docType === 'invoice') docPrefix = isDP ? 'INVOICE-DP-50%' : 'INVOICE-PELUNASAN';
+
+  const suggestedFileName = `${docPrefix} - ${itemSummary} - ${cleanClient} - Salsabilla`;
+  const documentNumber = `${docType.toUpperCase()}-${project.projectNumber.replace('PRJ-', '')}`;
+
   return (
     <div className="space-y-6">
       {/* Top Action Bar (Hidden during Print) */}
@@ -82,25 +100,33 @@ export default async function DocumentPage({
         </a>
 
         {/* Branch Switcher for Document */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-slate-500">Pilih Cabang Dokumen:</label>
-          <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-50 text-xs">
-            {branches.map((b) => (
-              <a
-                key={b.id}
-                href={`/documents/${project.id}/${docType}?branch=${b.id}${searchParams?.termin ? `&termin=${searchParams.termin}` : ''}`}
-                className={`px-2.5 py-1 rounded-md font-bold transition ${
-                  b.id === branch.id
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {b.city}
-              </a>
-            ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-slate-500">Cabang:</label>
+            <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-50 text-xs">
+              {branches.map((b) => (
+                <a
+                  key={b.id}
+                  href={`/documents/${project.id}/${docType}?branch=${b.id}${searchParams?.termin ? `&termin=${searchParams.termin}` : ''}`}
+                  className={`px-2.5 py-1 rounded-md font-bold transition ${
+                    b.id === branch.id
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {b.city}
+                </a>
+              ))}
+            </div>
           </div>
 
-          <PrintButton />
+          <PrintButton
+            suggestedFileName={suggestedFileName}
+            clientPhone={project.clientPhone}
+            clientName={project.clientName}
+            docTitle={docTitle}
+            documentNumber={documentNumber}
+          />
         </div>
       </div>
 
