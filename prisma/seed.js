@@ -37,19 +37,20 @@ async function main() {
   // 2. Official Master Rates Salsabilla Advertising (Update 2026)
   const rates = [
     // A. HURUF TIMBUL (Per cm tinggi/huruf)
-    { name: 'Huruf Timbul Galvanis Cat Duco (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Plat galvanis bending las + finishing cat duco oven' },
-    { name: 'Huruf Timbul Akrilik Solid (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Akrilik solid Marga Cipta 3mm' },
-    { name: 'Huruf Timbul Stainless Steel (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 6500, sellPrice: 12000, notes: 'Stainless steel mirror / hairline 201/304' },
+    { name: 'Plat Galvanis Cat Duco (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5500, sellPrice: 10000, notes: 'Plat galvanis bending las + finishing cat duco oven' },
+    { name: 'Akrilik Solid (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Akrilik solid Marga Cipta 3mm' },
+    { name: 'Stainless Steel (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 6500, sellPrice: 12000, notes: 'Stainless steel mirror / hairline 201/304' },
     { name: 'Huruf Timbul Akrilik Dual Glow (Cahaya Depan & Belakang)', category: 'huruf_timbul', unit: 'cm', costPrice: 9500, sellPrice: 18000, notes: 'Akrilik muka & siluet belakang menyala LED' },
-    { name: 'Huruf Timbul Stainless Biasa + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 10500, sellPrice: 20000, notes: 'Badan stainless + backlight LED modul' },
-    { name: 'Huruf Timbul Stainless Gold Titanium + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 13500, sellPrice: 25000, notes: 'Stainless mirror gold titanium + LED modul' },
+    { name: 'Huruf Timbul Stainless Biasa + LED Backlight', category: 'huruf_timbul', unit: 'cm', costPrice: 10500, sellPrice: 20000, notes: 'Badan stainless + backlight LED modul IP68' },
+    { name: 'Huruf Timbul Stainless Gold Titanium + LED', category: 'huruf_timbul', unit: 'cm', costPrice: 13500, sellPrice: 25000, notes: 'Stainless mirror gold titanium + LED modul' },
 
     // B. NEON BOX (Per m2)
-    { name: 'Neon Box 1 Sisi Akrilik + Lampu TL (Tanpa Tiang)', category: 'neon_box', unit: 'm2', costPrice: 1050000, sellPrice: 1900000, notes: 'Rangka hollow 2x2, visual akrilik, lampu TL/LED tube' },
-    { name: 'Neon Box 2 Sisi Akrilik + Lampu TL (Tanpa Tiang)', category: 'neon_box', unit: 'm2', costPrice: 1550000, sellPrice: 2850000, notes: 'Rangka hollow 2x2, visual akrilik bolak-balik' },
+    { name: 'Neon Box Akrilik 1 Sisi', category: 'neon_box', unit: 'm2', costPrice: 1050000, sellPrice: 1900000, notes: 'Rangka hollow 2x2, visual akrilik 3mm, lampu LED tube/modul' },
+    { name: 'Neon Box Akrilik 2 Sisi', category: 'neon_box', unit: 'm2', costPrice: 1550000, sellPrice: 2850000, notes: 'Rangka hollow 2x2, visual akrilik bolak-balik + lampu LED' },
+    { name: 'Neon Box Bulat / Mangkokan Akrilik + LED', category: 'neon_box', unit: 'm2', costPrice: 1200000, sellPrice: 2200000, notes: 'Model mangkokan bending bulat/custom presisi' },
 
     // C. PAPAN REKLAME & BILLBOARD (Per m2)
-    { name: 'Papan Reklame Flexi Korea (Tanpa Tiang)', category: 'reklame', unit: 'm2', costPrice: 520000, sellPrice: 950000, notes: 'Rangka hollow 3x3, plat galvalum backplate, flexi korea printing' },
+    { name: 'Papan Reklame Flexi Korea + Plat Galvalum', category: 'reklame', unit: 'm2', costPrice: 550000, sellPrice: 950000, notes: 'Rangka hollow 3x3, plat galvalum backplate, flexi korea printing' },
     { name: 'Rangka Billboard Raksasa Besi Siku Heavy Duty', category: 'reklame', unit: 'm2', costPrice: 750000, sellPrice: 1350000, notes: 'Konstruksi siku 4x4 / 5x5 + pengaku angin' },
 
     // D. TIANG KONSTRUKSI & PONDASI (Per meter / titik)

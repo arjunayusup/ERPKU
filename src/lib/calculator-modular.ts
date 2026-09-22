@@ -72,12 +72,12 @@ export function calculateMaterial(spec: ModularProductSpec) {
     const depthFactor = depth > 5 ? 1 + ((depth - 5) / 10) * 0.15 : 1.0;
 
     let sellRatePerCm = 10000;
-    let costRatePerCm = 5000;
+    let costRatePerCm = 5500;
 
     switch (spec.subCategory) {
       case 'galvanis_duco_off':
         sellRatePerCm = 10000;
-        costRatePerCm = 5000;
+        costRatePerCm = 5500;
         materialDescription = 'Plat Galvanis Cat Duco (Non-Lampu)';
         break;
       case 'akrilik_off':
@@ -223,7 +223,7 @@ export function calculateMaterial(spec: ModularProductSpec) {
     areaM2 = Math.max(1.0, rawArea);
 
     let sellRatePerM2 = 950000;
-    let costRatePerM2 = 520000;
+    let costRatePerM2 = 550000;
 
     if (spec.subCategory === 'billboard_heavy_duty') {
       sellRatePerM2 = 1350000;
@@ -231,8 +231,8 @@ export function calculateMaterial(spec: ModularProductSpec) {
       materialDescription = 'Rangka Billboard Siku Heavy Duty';
     } else {
       sellRatePerM2 = 950000;
-      costRatePerM2 = 520000;
-      materialDescription = 'Papan Reklame Hollow 3x3 + Galvalum + Flexi Korea';
+      costRatePerM2 = 550000;
+      materialDescription = 'Papan Reklame Flexi Korea + Plat Galvalum';
     }
 
     materialHpp = Math.round(areaM2 * costRatePerM2);
@@ -445,15 +445,15 @@ export function calculateReverseMargin(totalHpp: number, negotiatedPrice: number
   return Math.round((profit / negotiatedPrice) * 100);
 }
 
-// Visual Health Indicator (Hijau, Kuning, Merah)
+// Visual Health Indicator (Hijau Emerald, Kuning Amber, Merah Rose)
 export function getMarginHealthStatus(marginPercent: number) {
-  if (marginPercent >= 30) {
-    return { label: 'Margin Sehat', color: 'emerald', code: 'safe' };
+  if (marginPercent >= 35) {
+    return { label: 'Untung Sehat', color: 'emerald', code: 'safe', textColor: 'text-emerald-600', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
   }
-  if (marginPercent >= 15) {
-    return { label: 'Margin Tipis (Hati-hati)', color: 'amber', code: 'warning' };
+  if (marginPercent >= 20) {
+    return { label: 'Waspada / Tipis', color: 'amber', code: 'warning', textColor: 'text-amber-500', badgeColor: 'bg-amber-50 text-amber-700 border-amber-200' };
   }
-  return { label: 'Bahaya Rugi!', color: 'rose', code: 'danger' };
+  return { label: 'Bahaya', color: 'rose', code: 'danger', textColor: 'text-rose-600', badgeColor: 'bg-rose-50 text-rose-700 border-rose-200' };
 }
 
 // Distribusi penyesuaian harga nego ke multi-item secara proporsional

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
+import { Toaster } from 'sonner';
 
 export default async function DashboardLayout({
   children,
@@ -147,6 +148,9 @@ export default async function DashboardLayout({
 
       {/* Mobile Bottom Navigation Bar */}
       <MobileBottomNav isAdmin={isAdmin} />
+
+      {/* Modern Global Notification Toaster */}
+      <Toaster richColors position="top-right" closeButton />
     </div>
   );
 }

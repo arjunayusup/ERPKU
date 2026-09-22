@@ -6,12 +6,8 @@ import {
   Receipt, 
   ArrowUpRight, 
   Calculator,
-  EyeOff,
-  MapPin,
-  Building2,
-  Plus
+  EyeOff
 } from 'lucide-react';
-import { SALSABILLA_BRANCHES } from '@/lib/branches';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -165,26 +161,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* 3 Cabang Summary Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Object.values(SALSABILLA_BRANCHES).map((branch) => (
-          <div key={branch.id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm text-xs">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-extrabold text-slate-900 uppercase flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-rose-600" /> {branch.name}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
-                {branch.code}
-              </span>
-            </div>
-            <p className="text-slate-600 leading-snug line-clamp-2">{branch.address}</p>
-            <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between">
-              <span>WA: <strong className="text-slate-700">{branch.whatsapp.split('/')[0]}</strong></span>
-              <span>Rek: <strong className="text-slate-700">{branch.bankName} {branch.bankAccount}</strong></span>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Recent Projects Table (Clean Light) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">

@@ -20,6 +20,7 @@ import {
   Phone
 } from 'lucide-react';
 import { updateProjectStatusAction, upsertInstallationScheduleAction } from '@/app/actions/project';
+import { toast } from 'sonner';
 
 interface ProjectActionsBarProps {
   project: {
@@ -37,11 +38,11 @@ interface ProjectActionsBarProps {
 }
 
 const STAGES = [
-  { key: 'draft', label: 'Penawaran', desc: 'Draft penawaran klien', icon: FileText },
-  { key: 'in_production', label: 'Pabrikasi', desc: 'Pengerjaan di bengkel', icon: Hammer },
-  { key: 'ready_install', label: 'Siap Pasang', desc: 'Produk siap berangkat', icon: Truck },
-  { key: 'installing', label: 'Pemasangan', desc: 'Pengerjaan lapangan', icon: Building2 },
-  { key: 'completed', label: 'Selesai & Lunas', desc: 'BAST & Pelunasan', icon: CheckCircle2 },
+  { key: 'draft', label: 'Penawaran', desc: 'Quotation Penawaran Klien', icon: FileText },
+  { key: 'deal', label: 'Deal (Menunggu DP)', desc: 'Menunggu pembayaran DP', icon: CreditCard },
+  { key: 'in_production', label: 'Pabrikasi', desc: 'DP diterima, proses bengkel', icon: Hammer },
+  { key: 'ready_install', label: 'Siap Pasang', desc: 'Selesai QC, siap berangkat', icon: Truck },
+  { key: 'completed', label: 'Selesai & Lunas', desc: 'BAST & Pelunasan tuntas', icon: CheckCircle2 },
 ];
 
 export default function ProjectActionsBar({ project, isAdmin }: ProjectActionsBarProps) {
@@ -74,10 +75,11 @@ export default function ProjectActionsBar({ project, isAdmin }: ProjectActionsBa
     const res = await updateProjectStatusAction(project.id, selectedStatus);
     setIsSubmitting(false);
     if (res.success) {
+      toast.success('Status progres proyek berhasil diperbarui!');
       setIsStatusModalOpen(false);
       router.refresh();
     } else {
-      alert(res.error || 'Gagal mengubah status.');
+      toast.error(res.error || 'Gagal mengubah status.');
     }
   };
 
@@ -92,10 +94,11 @@ export default function ProjectActionsBar({ project, isAdmin }: ProjectActionsBa
     });
     setIsSubmitting(false);
     if (res.success) {
+      toast.success('Jadwal pemasangan berhasil disimpan!');
       setIsScheduleModalOpen(false);
       router.refresh();
     } else {
-      alert(res.error || 'Gagal menyimpan jadwal.');
+      toast.error(res.error || 'Gagal menyimpan jadwal.');
     }
   };
 
@@ -110,28 +113,20 @@ export default function ProjectActionsBar({ project, isAdmin }: ProjectActionsBa
             </span>
             <div className="flex items-center gap-2 mt-0.5">
               <h2 className="text-sm font-extrabold text-slate-900">
-                Tahap Sekarang: {STAGES.find((s) => s.key === project.status)?.label || 'Pabrikasi Bengkel'}
+                Tahap Sekarang: {STAGES.find((s) => s.key === project.status)?.label || 'Pabrikasi'}
               </h2>
             </div>
           </div>
 
-          {/* Quick Action Buttons: Status & Schedule */}
+          {/* Action Button: Status Update */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsStatusModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs flex items-center gap-2 transition cursor-pointer shadow-xs"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Update Progres</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsScheduleModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-            >
-              <Calendar className="w-3.5 h-3.5 text-indigo-200" />
-              <span>{activeSchedule ? 'Ubah Jadwal' : 'Atur Jadwal'}</span>
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>⚡ Update Tahapan Progres</span>
             </button>
           </div>
         </div>
@@ -298,9 +293,10 @@ export default function ProjectActionsBar({ project, isAdmin }: ProjectActionsBa
             <button
               type="button"
               onClick={() => setIsScheduleModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
             >
-              {activeSchedule ? 'Ubah Jadwal' : '+ Atur Jadwal Sekarang'}
+              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{activeSchedule ? '🗓 Ubah Jadwal Pemasangan' : '🗓 Atur Jadwal Pemasangan'}</span>
             </button>
           </div>
         </div>

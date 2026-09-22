@@ -20,6 +20,7 @@ import {
 import { SALSABILLA_BRANCHES } from '@/lib/branches';
 import { getMaterialDisplayLabel, calculateLedModules, formatItemDimensions } from '@/lib/calculator-modular';
 import ProjectActionsBar from './ProjectActionsBar';
+import ProjectItemsTable from './ProjectItemsTable';
 
 export default async function ProjectDetailPage({
   params,
@@ -112,80 +113,11 @@ export default async function ProjectDetailPage({
         </div>
       )}
 
-      {/* Two Column Layout: Items Spec & Expense Tracker */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left (7 cols): Items Reklame Spek */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-600" />
-            Spesifikasi Unit Reklame & Kelistrikan
-          </h2>
+      {/* 1. Spesifikasi Unit Reklame & Kelistrikan (Tabel Modern & Lengkap) */}
+      <ProjectItemsTable items={project.items} projectId={project.id} isAdmin={isAdmin} />
 
-          <div className="space-y-3">
-            {project.items.map((item) => {
-              const ledInfo = calculateLedModules({
-                category: item.itemType,
-                subCategory: item.material,
-                material: item.material,
-                heightCm: item.heightCm || undefined,
-                charCount: item.charCount || undefined,
-                lightingType: item.lighting || undefined,
-              });
-
-              return (
-                <div key={item.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-sm">{item.description}</h3>
-                      <p className="text-slate-600 mt-0.5">
-                        Bahan: <strong className="text-slate-800">{getMaterialDisplayLabel(item.material)}</strong>
-                      </p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300 uppercase">
-                      {item.itemType}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-slate-700">
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Ukuran:</span>
-                      <span className="font-bold text-slate-900">
-                        {formatItemDimensions(item)}
-                      </span>
-                    </div>
-                    {ledInfo.isIlluminated ? (
-                      <>
-                        <div>
-                          <span className="text-slate-500 block text-[10px]">Modul LED:</span>
-                          <span className="font-bold text-slate-900">{item.ledCount || ledInfo.ledCount} Modul</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block text-[10px]">Trafo Safety:</span>
-                          <span className="font-bold text-slate-900">{item.trafoWatt || ledInfo.trafoWatt}W Rainproof</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="col-span-2">
-                        <span className="text-slate-500 block text-[10px]">Sistem Lampu:</span>
-                        <span className="font-semibold text-slate-700">Non-Lampu (Plat Solid / Huruf Polos)</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {isAdmin && (
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
-                      <span className="text-slate-500">Harga Penawaran Item:</span>
-                      <span className="font-extrabold text-slate-900">{formatRupiah(item.sellingPrice)}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right (5 cols): Expense Tracker / Bon Belanjaan */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+      {/* 2. Expense Tracker / Bon Belanjaan */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
           <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
             <Receipt className="w-4 h-4 text-emerald-600" />
             Catatan Bon Belanja Lapangan
@@ -257,7 +189,6 @@ export default async function ProjectDetailPage({
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

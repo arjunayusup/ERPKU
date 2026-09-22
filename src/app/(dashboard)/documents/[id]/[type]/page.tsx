@@ -437,12 +437,18 @@ export default async function DocumentPage({
                         </div>
                         <div>
                           <span className="text-[9.5px] text-slate-500 font-bold block uppercase">LED & Trafo (Fisik):</span>
-                          <p className="font-bold text-slate-900">
-                            {it.ledCount || snap.ledCount ? `${it.ledCount || snap.ledCount} Modul LED IP68` : 'Non-Lampu'}
-                          </p>
-                          <p className="text-slate-600 text-[10px]">
-                            {it.trafoWatt || snap.trafoWatt ? `Trafo ${it.trafoWatt || snap.trafoWatt}W Rainproof` : '-'}
-                          </p>
+                          {it.ledCount || snap.poLedCount || snap.ledCount ? (
+                            <div className="space-y-0.5">
+                              <span className="font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 text-[10px] inline-block">
+                                ⚡ {snap.poLedCount || it.ledCount || snap.ledCount} Pcs LED {snap.poTrafoType ? `(${snap.poTrafoType})` : ''} — WAJIB HITUNG ULANG
+                              </span>
+                              <p className="text-slate-600 text-[10px]">
+                                Trafo: {snap.poTrafoType || (it.trafoWatt || snap.trafoWatt ? `Trafo ${it.trafoWatt || snap.trafoWatt}W Rainproof` : 'Standar Rainproof')}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="font-bold text-slate-500">Non-Lampu</span>
+                          )}
                         </div>
                         <div>
                           <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Visual / Stiker / Cat:</span>
@@ -452,9 +458,9 @@ export default async function DocumentPage({
                       </div>
 
                       {noteText && (
-                        <div className="bg-amber-50/90 border border-amber-200 rounded p-2 text-slate-800 text-[11px] leading-snug">
+                        <div className="bg-amber-50/90 border border-amber-200 rounded p-2.5 text-slate-800 text-[11px] leading-snug">
                           <span className="font-extrabold text-amber-900 uppercase text-[10px] block">Instruksi Khusus Fabrikasi Bengkel:</span>
-                          <p className="font-medium mt-0.5">{noteText}</p>
+                          <p className="font-medium mt-0.5 whitespace-pre-wrap">{noteText}</p>
                         </div>
                       )}
                     </div>
@@ -470,15 +476,15 @@ export default async function DocumentPage({
                 </div>
                 <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
-                  <span>2. Pengukuran Dimensi Bersih</span>
+                  <span>2. Pengukuran Dimensi Bersih & Daun</span>
                 </div>
                 <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
-                  <span>3. Kesesuaian Warna Stiker/Cat</span>
+                  <span>3. Fisik Cat Rata & Stiker Rapi</span>
                 </div>
                 <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
-                  <span>4. Hitung Fisik Modul LED & Arus</span>
+                  <span>4. Uji Nyala Lampu 12 Jam (Burn-In)</span>
                 </div>
                 <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
@@ -493,11 +499,11 @@ export default async function DocumentPage({
               {/* Baris Paraf QC */}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-300 text-[10px] text-slate-700">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900">Diperiksa oleh QC Bengkel:</span>
+                  <span className="font-bold text-slate-900">Diperiksa oleh Mandor Bengkel:</span>
                   <span className="font-mono text-slate-500">(...........................................) Tgl: ...../.....</span>
                 </div>
                 <div className="flex items-center gap-2 text-right justify-end">
-                  <span className="font-bold text-slate-900">Disetujui Kepala Produksi:</span>
+                  <span className="font-bold text-slate-900">Disetujui Kepala Gudang / QC:</span>
                   <span className="font-mono text-slate-500">(...........................................) Tgl: ...../.....</span>
                 </div>
               </div>

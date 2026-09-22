@@ -35,6 +35,25 @@ import {
 } from '@/app/actions/quotation';
 import { updateProjectStatusAction, upsertInstallationScheduleAction } from '@/app/actions/project';
 import { getRecommendedToolsForProject, ToolItem } from '@/lib/tools-checklist';
+import { toast } from 'sonner';
+
+export const getProjectStatusBadge = (status: string) => {
+  switch (status) {
+    case 'draft':
+      return { label: 'Penawaran', className: 'bg-slate-100 text-slate-700 border border-slate-200' };
+    case 'deal':
+      return { label: 'Deal (Tunggu DP)', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' };
+    case 'ready_install':
+      return { label: 'Siap Pasang', className: 'bg-amber-50 text-amber-700 border border-amber-200' };
+    case 'installing':
+      return { label: 'Pemasangan', className: 'bg-purple-50 text-purple-700 border border-purple-200' };
+    case 'completed':
+      return { label: 'Selesai & Lunas', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+    case 'in_production':
+    default:
+      return { label: 'Pabrikasi', className: 'bg-blue-50 text-blue-700 border border-blue-200' };
+  }
+};
 
 interface ProjectsClientListProps {
   initialProjects: any[];
@@ -120,9 +139,10 @@ export default function ProjectsClientList({
         prev.map((p) => (p.id === updatingStatusProject.id ? { ...p, status: modalSelectedStatus } : p))
       );
       setUpdatingStatusProject(null);
+      toast.success('Status tahapan proyek berhasil diperbarui');
       router.refresh();
     } else {
-      alert(res.error || 'Gagal mengubah status.');
+      toast.error(res.error || 'Gagal mengubah status.');
     }
   };
 
@@ -175,9 +195,10 @@ export default function ProjectsClientList({
         )
       );
       setSchedulingProject(null);
+      toast.success('Jadwal pemasangan berhasil disimpan');
       router.refresh();
     } else {
-      alert(res.error || 'Gagal menyimpan jadwal.');
+      toast.error(res.error || 'Gagal menyimpan jadwal.');
     }
   };
 
@@ -198,7 +219,9 @@ export default function ProjectsClientList({
     const res = await deleteQuotationAction(id);
     setIsProcessing(null);
     if (!res.success) {
-      alert(res.error || 'Gagal memindahkan penawaran ke tempat sampah.');
+      toast.error(res.error || 'Gagal memindahkan penawaran ke tempat sampah.');
+    } else {
+      toast.success(`Penawaran ${projectNumber} dipindahkan ke tempat sampah.`);
     }
     router.refresh();
   };
@@ -210,7 +233,9 @@ export default function ProjectsClientList({
     const res = await restoreQuotationAction(id);
     setIsProcessing(null);
     if (!res.success) {
-      alert(res.error || 'Gagal memulihkan proyek.');
+      toast.error(res.error || 'Gagal memulihkan proyek.');
+    } else {
+      toast.success('Proyek berhasil dipulihkan.');
     }
     router.refresh();
   };
@@ -227,7 +252,9 @@ export default function ProjectsClientList({
     const res = await hardDeleteQuotationAction(id);
     setIsProcessing(null);
     if (!res.success) {
-      alert(res.error || 'Gagal menghapus proyek secara permanen.');
+      toast.error(res.error || 'Gagal menghapus proyek secara permanen.');
+    } else {
+      toast.success(`Proyek ${projectNumber} dihapus permanen.`);
     }
     router.refresh();
   };
@@ -245,7 +272,9 @@ export default function ProjectsClientList({
     const res = await emptyTrashAction();
     setIsProcessing(null);
     if (!res.success) {
-      alert(res.error || 'Gagal mengosongkan tempat sampah.');
+      toast.error(res.error || 'Gagal mengosongkan tempat sampah.');
+    } else {
+      toast.success('Tempat sampah berhasil dikosongkan.');
     }
     router.refresh();
   };
@@ -388,13 +417,14 @@ export default function ProjectsClientList({
                   </div>
                   <h3 className="font-bold text-slate-900 text-sm mt-0.5 leading-snug">{p.title}</h3>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                  p.status === 'ready_install' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                  p.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                  'bg-blue-50 text-blue-700 border border-blue-200'
-                }`}>
-                  {p.status === 'ready_install' ? 'Siap Pasang' : p.status === 'completed' ? 'Lunas' : 'Pabrikasi'}
-                </span>
+                {(() => {
+                  const badge = getProjectStatusBadge(p.status);
+                  return (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Client & Address Info */}
@@ -559,13 +589,14 @@ export default function ProjectsClientList({
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      p.status === 'ready_install' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                      p.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                      'bg-blue-50 text-blue-700 border border-blue-200'
-                    }`}>
-                      {p.status === 'ready_install' ? 'Siap Pasang' : p.status === 'completed' ? 'Lunas' : 'Pabrikasi'}
-                    </span>
+                    {(() => {
+                      const badge = getProjectStatusBadge(p.status);
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   {isAdmin ? (
                     <td className="px-4 py-4 whitespace-nowrap font-black text-slate-900">{formatRupiah(p.totalDeal)}</td>
@@ -699,7 +730,8 @@ export default function ProjectsClientList({
 
             <div className="space-y-2 text-xs">
               {[
-                { key: 'draft', label: 'Penawaran', desc: 'Draft penawaran klien' },
+                { key: 'draft', label: 'Penawaran (Quotation)', desc: 'Draft penawaran klien' },
+                { key: 'deal', label: 'Deal (Menunggu DP)', desc: 'Penawaran disetujui, menunggu pembayaran muka / PO resmi' },
                 { key: 'in_production', label: 'Pabrikasi Bengkel', desc: 'Pengerjaan frame, huruf & lampu di workshop' },
                 { key: 'ready_install', label: 'Siap Pasang', desc: 'Produk sudah selesai QC & siap diberangkatkan' },
                 { key: 'installing', label: 'Pemasangan Lapangan', desc: 'Tim sedang pasang di lokasi klien' },

@@ -14,6 +14,7 @@ import { getAllBranches, getBranchConfig } from '@/lib/branches';
 import { createQuotationAction, updateQuotationAction, getQuotationByIdAction } from '@/app/actions/quotation';
 import { getMaterialRatesAction } from '@/app/actions/master';
 import SearchableCombobox, { ComboboxOption } from '@/components/SearchableCombobox';
+import { toast } from 'sonner';
 import { 
   Calculator, 
   Plus, 
@@ -49,18 +50,18 @@ import {
 // =========================================================================
 const DEFAULT_MATERIAL_RATES: ComboboxOption[] = [
   // Huruf Timbul
-  { id: 'mat-ht-1', name: 'Huruf Timbul Stainless Biasa + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 10500, sellPrice: 20000, notes: 'Badan stainless mirror/hairline + backlight LED modul IP68' },
-  { id: 'mat-ht-2', name: 'Huruf Timbul Akrilik Dual Glow (Nyala Depan & Belakang)', category: 'huruf_timbul', unit: 'cm', costPrice: 9500, sellPrice: 18000, notes: 'Akrilik solid Marga Cipta muka & siluet belakang' },
-  { id: 'mat-ht-3', name: 'Huruf Timbul Stainless Gold Titanium + Lampu LED', category: 'huruf_timbul', unit: 'cm', costPrice: 13500, sellPrice: 25000, notes: 'Plat stainless gold mirror anti karat + LED modul' },
-  { id: 'mat-ht-4', name: 'Huruf Timbul Galvanis Cat Duco Oven (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Plat galvanis bending las finishing cat duco oven' },
-  { id: 'mat-ht-5', name: 'Huruf Timbul Akrilik Solid MC (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Akrilik solid tebal 3mm warna standar Marga Cipta' },
-  { id: 'mat-ht-6', name: 'Huruf Timbul Stainless Steel (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 6500, sellPrice: 12000, notes: 'Stainless 201/304 finishing mirror atau hairline' },
+  { id: 'mat-ht-1', name: 'Plat Galvanis Cat Duco (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5500, sellPrice: 10000, notes: 'Plat galvanis bending las finishing cat duco oven' },
+  { id: 'mat-ht-2', name: 'Akrilik Solid (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 5000, sellPrice: 10000, notes: 'Akrilik solid tebal 3mm warna standar Marga Cipta' },
+  { id: 'mat-ht-3', name: 'Stainless Steel (Non-Lampu)', category: 'huruf_timbul', unit: 'cm', costPrice: 6500, sellPrice: 12000, notes: 'Stainless 201/304 finishing mirror atau hairline' },
+  { id: 'mat-ht-4', name: 'Huruf Timbul Akrilik Dual Glow (Cahaya Depan & Belakang)', category: 'huruf_timbul', unit: 'cm', costPrice: 9500, sellPrice: 18000, notes: 'Akrilik solid Marga Cipta muka & siluet belakang' },
+  { id: 'mat-ht-5', name: 'Huruf Timbul Stainless Biasa + LED Backlight', category: 'huruf_timbul', unit: 'cm', costPrice: 10500, sellPrice: 20000, notes: 'Badan stainless mirror/hairline + backlight LED modul IP68' },
+  { id: 'mat-ht-6', name: 'Huruf Timbul Stainless Gold Titanium + LED', category: 'huruf_timbul', unit: 'cm', costPrice: 13500, sellPrice: 25000, notes: 'Plat stainless gold mirror anti karat + LED modul' },
   
   // Neon Box & Billboard
-  { id: 'mat-nb-1', name: 'Neon Box 1 Sisi Akrilik + Lampu TL/LED', category: 'neon_box', unit: 'm2', costPrice: 1050000, sellPrice: 1900000, notes: 'Rangka hollow 2x2, visual akrilik 3mm, lampu LED tube/modul' },
-  { id: 'mat-nb-2', name: 'Neon Box 2 Sisi Akrilik Bolak-Balik + Lampu TL/LED', category: 'neon_box', unit: 'm2', costPrice: 1550000, sellPrice: 2850000, notes: 'Rangka hollow 2x2, visual akrilik bolak-balik' },
+  { id: 'mat-nb-1', name: 'Neon Box Akrilik 1 Sisi', category: 'neon_box', unit: 'm2', costPrice: 1050000, sellPrice: 1900000, notes: 'Rangka hollow 2x2, visual akrilik 3mm, lampu LED tube/modul' },
+  { id: 'mat-nb-2', name: 'Neon Box Akrilik 2 Sisi', category: 'neon_box', unit: 'm2', costPrice: 1550000, sellPrice: 2850000, notes: 'Rangka hollow 2x2, visual akrilik bolak-balik + lampu LED' },
   { id: 'mat-nb-3', name: 'Neon Box Bulat / Mangkokan Akrilik + LED', category: 'neon_box', unit: 'm2', costPrice: 1200000, sellPrice: 2200000, notes: 'Model mangkokan bending bulat/custom presisi' },
-  { id: 'mat-nb-4', name: 'Papan Reklame Flexi Korea (Tanpa Tiang)', category: 'neon_box', unit: 'm2', costPrice: 520000, sellPrice: 950000, notes: 'Rangka hollow 3x3 + galvalum + flexi korea cetak UV' },
+  { id: 'mat-nb-4', name: 'Papan Reklame Flexi Korea + Plat Galvalum', category: 'neon_box', unit: 'm2', costPrice: 550000, sellPrice: 950000, notes: 'Rangka hollow 3x3 + galvalum + flexi korea cetak UV' },
   { id: 'mat-nb-5', name: 'Rangka Billboard Raksasa Besi Siku Heavy Duty', category: 'neon_box', unit: 'm2', costPrice: 750000, sellPrice: 1350000, notes: 'Konstruksi siku 4x4 / 5x5 + pengaku angin' },
 
   // Background Fasad
@@ -89,25 +90,6 @@ function parseSafeNumber(val: string | number, fallback = 0): number {
   return isNaN(num) ? fallback : num;
 }
 
-// Quick Tag Pills (Acuan Nyata Percakapan Bengkel & Lapangan)
-const QUICK_TAG_PILLS = [
-  { label: '+ Daun Stainless 10cm', text: 'daun stainless mirror 10cm' },
-  { label: '+ Daun ACP 6cm', text: 'daun ACP 6cm' },
-  { label: '+ Daun 4.5cm', text: 'daun 4.5cm' },
-  { label: '+ Neon Box Mangkokan', text: 'neon box mangkokan' },
-  { label: '+ Rangka Hollow 2x2', text: 'rangka hollow 2x2cm' },
-  { label: '+ Rangka Hollow 2x4', text: 'rangka hollow 2x4cm anti karat' },
-  { label: '+ Plat Belakang Cat Putih', text: 'belakang plat galvanis cat putih rapih' },
-  { label: '+ Board Hollow ACP', text: 'board hollow 2x2 dibungkus ACP' },
-  { label: '+ Lampu 4000K LED Bar', text: 'lampu 4000K led bar' },
-  { label: '+ LED Samsung IP68', text: 'LED modul Samsung IP68 waterproof' },
-  { label: '+ Tanpa Lampu', text: 'tidak pakai lampu' },
-  { label: '+ Stiker 3M Putih', text: 'depan stiker 3M putih' },
-  { label: '+ Stiker Oracal 8500', text: 'stiker Oracal 8500 translucent' },
-  { label: '+ Bracket Pipa', text: 'bracket pipa' },
-  { label: '+ Breket Siku Dynabolt', text: 'breket siku dynabolt' },
-  { label: '+ Cat Duco Oven', text: 'finishing cat duco oven' },
-];
 
 function CalculatorContent() {
   const router = useRouter();
@@ -329,23 +311,23 @@ function CalculatorContent() {
     const rateCost = selectedMaterial.costPrice || 0;
 
     if (activeCategory === 'huruf_timbul') {
-      const effHeight = Math.max(10, parseSafeNumber(letterHeightCm, 10));
-      const effChars = letterText.trim() ? letterText.replace(/\s+/g, '').length : Math.max(1, parseSafeNumber(charCount, 1));
+      const effHeight = parseSafeNumber(letterHeightCm, 0);
+      const effChars = letterText.trim() ? letterText.replace(/\s+/g, '').length : parseSafeNumber(charCount, 0);
       const depth = parseSafeNumber(letterDepthCm, 4);
       const depthFactor = depth > 5 ? 1 + ((depth - 5) / 10) * 0.15 : 1.0;
 
-      unitSell = Math.round(effHeight * rateSell * effChars * depthFactor);
-      unitHpp = Math.round(effHeight * rateCost * effChars * depthFactor);
+      unitSell = (effHeight > 0 && effChars > 0) ? Math.round(effHeight * rateSell * effChars * depthFactor) : 0;
+      unitHpp = (effHeight > 0 && effChars > 0) ? Math.round(effHeight * rateCost * effChars * depthFactor) : 0;
 
       autoDesc = customItemTitle || `Huruf Timbul ${letterText ? `"${letterText.toUpperCase()}"` : selectedMaterial.name}`;
       autoSpecs = `${selectedMaterial.name} • Tinggi ${effHeight}cm (${effChars} Karakter, Tebal ${depth}cm)`;
 
-      const led = calculateLedModules({
+      const led = (effHeight > 0 && effChars > 0) ? calculateLedModules({
         category: 'huruf_timbul',
         material: selectedMaterial.name,
         heightCm: effHeight,
         charCount: effChars,
-      });
+      }) : { ledCount: 0, trafoWatt: 0, isIlluminated: false };
       ledCount = led.ledCount;
       trafoWatt = led.trafoWatt;
 
@@ -365,7 +347,7 @@ function CalculatorContent() {
       unitHpp = Math.round(areaM2 * rateCost * multiFactor);
 
       const shapeLabel = boxShape === 'mangkokan' ? 'Mangkokan' : boxShape === 'bulat' ? 'Bulat Round' : 'Kotak';
-      const sideLabel = boxSides === '2sisi' ? '2 Muka / Bolak-Balik' : '1 Muka';
+      const sideLabel = boxSides === '2sisi' ? '2 Sisi' : '1 Sisi';
       autoDesc = customItemTitle || `Neon Box ${shapeLabel} (${sideLabel})`;
       autoSpecs = `${selectedMaterial.name} • Dimensi ${w} x ${h} cm (${areaM2.toFixed(2)} m²)`;
 
@@ -578,8 +560,10 @@ function CalculatorContent() {
     if (editingItemId) {
       setItems(items.map((it) => (it.id === editingItemId ? newItemData : it)));
       setEditingItemId(null);
+      toast.success('Item penawaran berhasil diperbarui!');
     } else {
       setItems([...items, newItemData]);
+      toast.success('Item ditambahkan ke penawaran!');
     }
 
     // Reset deal price to recalculate margin
@@ -636,6 +620,7 @@ function CalculatorContent() {
     setItems(items.filter((it) => it.id !== id));
     if (editingItemId === id) handleCancelInlineEdit();
     setCustomDealPrice(null);
+    toast.info('Item dihapus dari penawaran.');
   };
 
   // =========================================================================
@@ -643,7 +628,7 @@ function CalculatorContent() {
   // =========================================================================
   const handleOpenClientModal = (action: 'whatsapp' | 'save_project') => {
     if (items.length === 0) {
-      alert('Tambahkan minimal 1 item produk terlebih dahulu.');
+      toast.error('Tambahkan minimal 1 item produk terlebih dahulu.');
       return;
     }
     setClientModalAction(action);
@@ -652,7 +637,7 @@ function CalculatorContent() {
 
   const handleConfirmClientModal = async () => {
     if (!clientName.trim() || !clientPhone.trim()) {
-      alert('Nama Usaha Klien dan Nomor WhatsApp wajib diisi.');
+      toast.error('Nama Usaha Klien dan Nomor WhatsApp wajib diisi.');
       return;
     }
 
@@ -741,6 +726,7 @@ function CalculatorContent() {
       }
 
       setIsClientModalOpen(false);
+      toast.success(isEditMode ? 'Perubahan proyek berhasil disimpan!' : 'Proyek SPK berhasil dibuat!');
 
       if (clientModalAction === 'whatsapp') {
         const rawNumber = clientPhone.replace(/[^0-9]/g, '');
@@ -768,7 +754,7 @@ function CalculatorContent() {
         }
       }
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan sistem.');
+      toast.error(err.message || 'Terjadi kesalahan sistem.');
     } finally {
       setIsSubmitting(false);
     }
@@ -992,12 +978,12 @@ function CalculatorContent() {
 
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">
-                    Tinggi Huruf (cm) *min 10cm:
+                    Tinggi Huruf (cm):
                   </label>
                   <div className="relative">
                     <input
                       type="number"
-                      min={10}
+                      min={0}
                       value={letterHeightCm === 0 ? '' : letterHeightCm}
                       onChange={(e) => setLetterHeightCm(parseSafeNumber(e.target.value, 0))}
                       placeholder="20"
@@ -1015,9 +1001,9 @@ function CalculatorContent() {
                   </label>
                   <input
                     type="number"
-                    min={1}
+                    min={0}
                     value={charCount === 0 ? '' : charCount}
-                    onChange={(e) => setCharCount(Math.max(1, parseSafeNumber(e.target.value, 1)))}
+                    onChange={(e) => setCharCount(parseSafeNumber(e.target.value, 0))}
                     placeholder="1"
                     className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none"
                   />
@@ -1080,7 +1066,7 @@ function CalculatorContent() {
                           : 'bg-white text-slate-700 border-slate-300'
                       }`}
                     >
-                      1 Sisi (Dinding)
+                      1 Sisi
                     </button>
                     <button
                       type="button"
@@ -1091,7 +1077,7 @@ function CalculatorContent() {
                           : 'bg-white text-slate-700 border-slate-300'
                       }`}
                     >
-                      2 Sisi (Menjorok)
+                      2 Sisi
                     </button>
                   </div>
                 </div>
@@ -1331,40 +1317,6 @@ function CalculatorContent() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* 4. FREE TEXT INSTRUKSI BENGKEL & QUICK TAG PILLS */}
-          <div className="pt-2 border-t border-slate-200/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <label className="font-extrabold text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Instruksi Fabrikasi Bengkel (Tercetak di SPK & Kartu QC):</span>
-              </label>
-              <span className="text-[10.5px] text-slate-400">Klik pill untuk menambahkan cepat</span>
-            </div>
-
-            {/* Quick Tag Pills Bar */}
-            <div className="flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl">
-              {QUICK_TAG_PILLS.map((pill, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleAddQuickTag(pill.text)}
-                  className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 border border-slate-200 transition cursor-pointer"
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Textarea Instruksi Bebas */}
-            <textarea
-              rows={2}
-              value={fabricationNotes}
-              onChange={(e) => setFabricationNotes(e.target.value)}
-              placeholder="Contoh: Belakang plat galvanis cat putih rapih, daun stainless mirror 10cm, rangka hollow 2x2cm supaya teu malehoy, depan akrilik stiker, lampu 4000K led bar..."
-              className="w-full bg-white border border-slate-300 rounded-xl p-3 font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-xs text-xs"
-            />
           </div>
         </div>
 
@@ -1611,36 +1563,52 @@ function CalculatorContent() {
         </div>
 
         {/* BOTTOM ACTION BAR */}
-        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-[11px] uppercase font-bold text-slate-400 block">Total Final Kesepakatan:</span>
-            <div className="text-2xl font-black text-rose-600 font-mono">
-              {formatRupiah(effectiveGrandTotal)}
-            </div>
+        <div className="pt-4 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500">
+            <span className="px-3 py-1.5 rounded-xl bg-slate-100 font-bold text-slate-800 border border-slate-200">
+              {items.length} Item Penawaran
+            </span>
+            <span>
+              Subtotal: <strong className="text-slate-800">{formatRupiah(baseSubtotal)}</strong>
+            </span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${healthStatus.badgeColor}`}>
+              ● {healthStatus.label} ({realMarginPercent}%)
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Tombol 1: Kirim WA Penawaran via Pop-up Klien */}
-            <button
-              type="button"
-              onClick={() => handleOpenClientModal('whatsapp')}
-              disabled={items.length === 0}
-              className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>📱 Kirim WA Penawaran</span>
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 sm:gap-6">
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider block">
+                Total Kesepakatan:
+              </span>
+              <div className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${healthStatus.textColor}`}>
+                {formatRupiah(effectiveGrandTotal)}
+              </div>
+            </div>
 
-            {/* Tombol 2: Buat SPK Resmi via Pop-up Klien */}
-            <button
-              type="button"
-              onClick={() => handleOpenClientModal('save_project')}
-              disabled={items.length === 0}
-              className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-lg shadow-slate-900/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4 text-amber-400" />
-              <span>{isEditMode ? '💾 Simpan Perubahan SPK' : '💾 Buat SPK Resmi'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Tombol 1: Kirim WA Penawaran via Pop-up Klien */}
+              <button
+                type="button"
+                onClick={() => handleOpenClientModal('whatsapp')}
+                disabled={items.length === 0}
+                className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                <span>📱 Kirim WA Penawaran</span>
+              </button>
+
+              {/* Tombol 2: Buat SPK Resmi via Pop-up Klien */}
+              <button
+                type="button"
+                onClick={() => handleOpenClientModal('save_project')}
+                disabled={items.length === 0}
+                className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-lg shadow-slate-900/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4 text-amber-400" />
+                <span>{isEditMode ? '💾 Simpan Perubahan SPK' : '💾 Buat SPK Resmi'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -66,6 +66,54 @@ export async function updateProjectStatusAction(projectId: string, status: strin
   }
 }
 
+export async function updateItemFabricationSpecAction(payload: {
+  itemId: string;
+  projectId: string;
+  fabricationNotes: string;
+  poLedCount?: number;
+  poTrafoType?: string;
+  qcStatus?: string;
+}) {
+  try {
+    const item = await prisma.quotationItem.findUnique({
+      where: { id: payload.itemId },
+    });
+
+    if (!item) {
+      return { success: false, error: 'Item tidak ditemukan.' };
+    }
+
+    const existingSnap = typeof item.specSnapshot === 'string'
+      ? JSON.parse(item.specSnapshot)
+      : (item.specSnapshot || {});
+
+    const updatedSnapshot = {
+      ...existingSnap,
+      fabricationNotes: payload.fabricationNotes.trim(),
+      poLedCount: payload.poLedCount || existingSnap.poLedCount || undefined,
+      poTrafoType: payload.poTrafoType ? payload.poTrafoType.trim() : existingSnap.poTrafoType || undefined,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await prisma.quotationItem.update({
+      where: { id: payload.itemId },
+      data: {
+        specSnapshot: updatedSnapshot,
+        qcNotes: payload.fabricationNotes.trim() || undefined,
+        ...(payload.poLedCount !== undefined && payload.poLedCount > 0 ? { ledCount: payload.poLedCount } : {}),
+        ...(payload.qcStatus ? { qcStatus: payload.qcStatus } : {}),
+      },
+    });
+
+    revalidatePath(`/projects/${payload.projectId}`);
+    revalidatePath(`/documents/${payload.projectId}/spk`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating fabrication spec:', error);
+    return { success: false, error: error.message || 'Gagal menyimpan instruksi fabrikasi.' };
+  }
+}
+
 export async function upsertInstallationScheduleAction(payload: {
   projectId: string;
   date: string;
