@@ -399,6 +399,100 @@ export default async function DocumentPage({
               </table>
             </div>
 
+            {/* KARTU KENDALI MUTU & VERIFIKASI SPEK PO (LOCKED PO SNAPSHOT) */}
+            <div className="border-2 border-slate-900 rounded-lg p-4 bg-white space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-2">
+                <div>
+                  <h4 className="font-black text-slate-900 text-xs uppercase tracking-tight">
+                    KARTU KENDALI MUTU & VERIFIKASI SPEK PO (WORKSHOP QC)
+                  </h4>
+                  <p className="text-[10px] text-slate-600">
+                    Pemeriksaan fisik wajib sebelum penutupan cover dan serah terima ke tim instalasi / ekspedisi.
+                  </p>
+                </div>
+                <div className="px-3 py-1 bg-amber-100 border-2 border-amber-600 text-amber-950 font-black text-[11px] rounded tracking-wide uppercase text-center">
+                  ⚠️ WAJIB HITUNG ULANG FISIK SEBELUM TUTUP BOX
+                </div>
+              </div>
+
+              {/* Rincian Spek Terkunci per Item dari Snapshot */}
+              <div className="space-y-2">
+                {project.items.map((it, i) => {
+                  const snap = typeof it.specSnapshot === 'string' ? JSON.parse(it.specSnapshot) : (it.specSnapshot || {});
+                  return (
+                    <div key={it.id} className="p-2.5 bg-slate-50 border border-slate-300 rounded text-[11px] grid grid-cols-1 md:grid-cols-4 gap-2">
+                      <div>
+                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Item #{i + 1}:</span>
+                        <p className="font-extrabold text-slate-900">{it.description}</p>
+                        <p className="text-slate-600 text-[10px] font-mono">{formatItemSizeClean(it)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Stiker & Finishing Cat:</span>
+                        <p className="font-bold text-slate-800">{snap.stickerSpec || 'Sesuai Standar Bengkel'}</p>
+                        <p className="text-slate-600 text-[10px]">{snap.paintSpec || 'Tanpa Cat Khusus'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">LED & Trafo (Fisik):</span>
+                        <p className="font-bold text-slate-900">
+                          {it.ledCount || snap.ledCount ? `${it.ledCount || snap.ledCount} Modul LED IP68` : 'Non-Lampu'}
+                        </p>
+                        <p className="text-slate-600 text-[10px]">
+                          {it.trafoWatt || snap.trafoWatt ? `Trafo ${it.trafoWatt || snap.trafoWatt}W Rainproof` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Dudukan & Catatan PO:</span>
+                        <p className="font-semibold text-slate-800">{snap.mountSpec || 'Tempel Dinding Langsung'}</p>
+                        {snap.poNotes && (
+                          <p className="text-rose-700 font-medium italic text-[10px] mt-0.5">Note: {snap.poNotes}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Checklist Kendali Mutu Bengkel */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 text-[10.5px]">
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>1. Verifikasi Ejaan Teks PO</span>
+                </div>
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>2. Pengukuran Dimensi Bersih</span>
+                </div>
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>3. Kesesuaian Warna Stiker/Cat</span>
+                </div>
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>4. Hitung Fisik Modul LED & Arus</span>
+                </div>
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>5. Seal Silicone Waterproof Rapat</span>
+                </div>
+                <div className="p-2 border border-slate-300 rounded bg-white flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-800 rounded flex items-center justify-center font-bold text-[9px]">[ ]</span>
+                  <span>6. Dynabolt & Breket Cadangan</span>
+                </div>
+              </div>
+
+              {/* Baris Paraf QC */}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-300 text-[10px] text-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900">Diperiksa oleh QC Bengkel:</span>
+                  <span className="font-mono text-slate-500">(...........................................) Tgl: ...../.....</span>
+                </div>
+                <div className="flex items-center gap-2 text-right justify-end">
+                  <span className="font-bold text-slate-900">Disetujui Kepala Produksi:</span>
+                  <span className="font-mono text-slate-500">(...........................................) Tgl: ...../.....</span>
+                </div>
+              </div>
+            </div>
+
             {/* Simple Wiring Diagram & Technical Notes */}
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3.5 border border-slate-300 rounded-lg bg-slate-50">
@@ -502,6 +596,32 @@ export default async function DocumentPage({
               </table>
             </div>
 
+            {/* KARTU KENDALI MUTU & VERIFIKASI PENGIRIMAN */}
+            <div className="border border-slate-900 rounded-lg p-3 bg-slate-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900 text-xs uppercase">
+                  VERIFIKASI FISIK & KELENGKAPAN SEBELUM BERANGKAT (QC SURAT JALAN)
+                </span>
+                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  ⚠️ CEK FISIK SEBELUM NAIK PIKAP
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10.5px]">
+                <div className="p-1.5 bg-white border border-slate-300 rounded flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800">[✓]</span> Unit Bebas Baret/Pecah
+                </div>
+                <div className="p-1.5 bg-white border border-slate-300 rounded flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800">[✓]</span> Packing Peti / Buble Wrap
+                </div>
+                <div className="p-1.5 bg-white border border-slate-300 rounded flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800">[✓]</span> Trafo Rainproof Terbawa
+                </div>
+                <div className="p-1.5 bg-white border border-slate-300 rounded flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800">[✓]</span> Breket & Dynabolt Lengkap
+                </div>
+              </div>
+            </div>
+
             <p className="text-[11px] text-slate-600 italic">
               *Barang telah diperiksa dalam kondisi lengkap, fisik mulus, dan siap untuk dipasang di lokasi.
             </p>
@@ -548,25 +668,25 @@ export default async function DocumentPage({
               </div>
             </div>
 
-            {/* Checklist Serah Terima */}
+            {/* Checklist Serah Terima & Verifikasi Spek PO */}
             <div>
-              <h3 className="font-extrabold text-slate-900 uppercase text-xs mb-2">Checklist Pemeriksaan Lapangan Bersama:</h3>
+              <h3 className="font-extrabold text-slate-900 uppercase text-xs mb-2">Checklist Pemeriksaan Lapangan & Verifikasi Spek PO:</h3>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
                   <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
-                  <span><strong>Kondisi Fisik:</strong> Rapi, presisi, tanpa goresan / cacat visual</span>
+                  <span><strong>Kesesuaian Spek PO:</strong> Warna stiker Oracal & finishing cat oven presisi</span>
                 </div>
                 <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
                   <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
-                  <span><strong>Kekuatan Struktur:</strong> Dynabolt & breket terpasang kokoh</span>
+                  <span><strong>Kekuatan Struktur:</strong> Dynabolt & breket terpasang kokoh pada dinding/fasad</span>
                 </div>
                 <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
                   <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
-                  <span><strong>Uji Nyala Lampu:</strong> Seluruh modul LED menyala terang & merata</span>
+                  <span><strong>Uji Nyala Lampu:</strong> Seluruh modul LED menyala terang & arus trafo stabil</span>
                 </div>
                 <div className="p-2.5 rounded border border-slate-300 bg-white flex items-center gap-2">
                   <span className="w-4 h-4 rounded bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
-                  <span><strong>Kebersihan Area:</strong> Sisa kabel & area kerja telah dibersihkan</span>
+                  <span><strong>Garansi & Kebersihan:</strong> Kartu garansi 1 tahun diserahkan & area kerja bersih</span>
                 </div>
               </div>
             </div>

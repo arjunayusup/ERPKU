@@ -69,6 +69,7 @@ model Project {
   realProfit          Float                @default(0) // Laba Bersih = totalDeal - totalHpp - totalExpenses
 
   notes               String?              // Catatan termin / syarat teknis
+  toolsChecklist      Json?                // Checklist peralatan K3 & alat pasang
   deletedAt           DateTime?            // Soft Delete flag (NULL = aktif, Terisi = sampah)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -94,6 +95,11 @@ model QuotationItem {
   lighting       String   @default("none") // "none", "backlight", "frontlit"
   ledCount       Int?
   trafoWatt      Int?
+
+  // Kunci BOM & Spek Resmi PO
+  specSnapshot   Json?    // Snapshot rincian stiker Oracal, cat oven, trafo, LED resmi PO
+  qcStatus       String?  @default("PENDING") // PENDING, PASSED, REJECTED
+  qcNotes        String?
 
   quantity       Int      @default(1)
   unitPrice      Float    @default(0) // Snapshot harga satuan jual
@@ -140,6 +146,7 @@ model TeamMember {
   name      String
   phone     String   // Nomor WhatsApp
   role      String   // "LEAD_INSTALLER", "TECHNICIAN", "DRIVER", "WELDER", "HELPER"
+  isActive  Boolean  @default(true)
   status    String   @default("ACTIVE") // "ACTIVE", "INACTIVE"
   notes     String?
   createdAt DateTime @default(now())

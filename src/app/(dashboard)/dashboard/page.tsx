@@ -72,7 +72,7 @@ export default async function DashboardPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 transition cursor-pointer"
           >
             <Calculator className="w-4 h-4" />
-            <span>Kalkulator Produk</span>
+            <span>⚡ Hitung Estimasi & Buat SPK</span>
           </a>
 
           <a

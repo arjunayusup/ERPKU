@@ -49,6 +49,10 @@ export interface MultiItemLine {
   sellingPrice: number;
   unitHpp: number;
   hppPrice: number;
+  specSnapshot?: any;
+  qcStatus?: string;
+  qcNotes?: string;
+  isMinChargeApplied?: boolean;
 }
 
 // 1. Material & Basic Unit Calculator (Official Salsabilla Rates)
@@ -57,6 +61,8 @@ export function calculateMaterial(spec: ModularProductSpec) {
   let materialSell = 0;
   let materialDescription = '';
   let areaM2 = 0;
+  let isMinChargeApplied = false;
+  let rawArea = 0;
 
   if (spec.category === 'huruf_timbul') {
     const cleanText = (spec.text || '').trim();
@@ -113,10 +119,13 @@ export function calculateMaterial(spec: ModularProductSpec) {
       depthFactor,
       materialDescription,
       areaM2: 0,
+      isMinChargeApplied: false,
+      rawArea: 0,
     };
   } else if (spec.category === 'neon_box') {
-    const rawArea = (spec.lengthCm * spec.heightCm) / 10000;
-    areaM2 = Math.max(1.0, rawArea); // min order 1 m2
+    rawArea = (spec.lengthCm * spec.heightCm) / 10000;
+    isMinChargeApplied = rawArea > 0 && rawArea < 1.0;
+    areaM2 = Math.max(1.0, rawArea); // min charge 1.0 m2
 
     let sellRatePerM2 = 1900000;
     let costRatePerM2 = 1050000;
@@ -125,13 +134,13 @@ export function calculateMaterial(spec: ModularProductSpec) {
       case 'neon_box_1sisi':
         sellRatePerM2 = 1900000;
         costRatePerM2 = 1050000;
-        materialDescription = 'Neon Box 1 Sisi Akrilik + Lampu TL';
+        materialDescription = 'Neon Box 1 Sisi Akrilik + Lampu TL/LED';
         break;
       case 'neon_box_2sisi':
       default:
         sellRatePerM2 = 2850000;
         costRatePerM2 = 1550000;
-        materialDescription = 'Neon Box 2 Sisi Akrilik Bolak-Balik + Lampu TL';
+        materialDescription = 'Neon Box 2 Sisi Akrilik Bolak-Balik + Lampu TL/LED';
         break;
     }
 
@@ -142,6 +151,8 @@ export function calculateMaterial(spec: ModularProductSpec) {
       materialHpp,
       materialSell,
       areaM2: Number(areaM2.toFixed(2)),
+      rawArea: Number(rawArea.toFixed(2)),
+      isMinChargeApplied,
       materialDescription,
       charCount: 0,
       heightCm: spec.heightCm,

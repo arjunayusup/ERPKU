@@ -20,6 +20,9 @@ export interface QuotationItemInput {
   sellingPrice: number;
   unitHpp: number;
   hppPrice: number;
+  specSnapshot?: any;
+  qcStatus?: string;
+  qcNotes?: string;
 }
 
 export interface CreateQuotationPayload {
@@ -38,6 +41,7 @@ export interface CreateQuotationPayload {
   totalDeal: number;
   totalHpp: number;
   notes?: string;
+  toolsChecklist?: any;
   items: QuotationItemInput[];
 }
 
@@ -116,6 +120,7 @@ export async function createQuotationAction(payload: CreateQuotationPayload) {
         totalHpp: payload.totalHpp,
         realProfit: payload.totalDeal - payload.totalHpp,
         notes: payload.notes || '',
+        toolsChecklist: payload.toolsChecklist ? payload.toolsChecklist : undefined,
         clientId: customer.id,
         items: {
           create: payload.items.map((item) => ({
@@ -133,6 +138,9 @@ export async function createQuotationAction(payload: CreateQuotationPayload) {
             sellingPrice: Number(item.sellingPrice) || 0,
             unitHpp: Number(item.unitHpp) || 0,
             hppPrice: Number(item.hppPrice) || 0,
+            specSnapshot: item.specSnapshot || null,
+            qcStatus: item.qcStatus || 'PENDING',
+            qcNotes: item.qcNotes || null,
           })),
         },
       },
@@ -185,6 +193,9 @@ export async function updateQuotationAction(projectId: string, payload: Partial<
           sellingPrice: Number(item.sellingPrice) || 0,
           unitHpp: Number(item.unitHpp) || 0,
           hppPrice: Number(item.hppPrice) || 0,
+          specSnapshot: item.specSnapshot || null,
+          qcStatus: item.qcStatus || 'PENDING',
+          qcNotes: item.qcNotes || null,
         })),
       });
     }
@@ -212,14 +223,16 @@ export async function updateQuotationAction(projectId: string, payload: Partial<
         totalHpp,
         realProfit: totalDeal - totalHpp - existing.totalExpenses,
         notes: payload.notes !== undefined ? payload.notes : existing.notes,
+        ...(payload.toolsChecklist ? { toolsChecklist: payload.toolsChecklist } : {}),
       },
     });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/projects');
     revalidatePath('/dashboard');
+    revalidatePath('/calculator');
 
-    return { success: true };
+    return { success: true, projectId };
   } catch (error: any) {
     console.error('Error updating quotation:', error);
     return { success: false, error: error.message || 'Gagal memperbarui penawaran.' };

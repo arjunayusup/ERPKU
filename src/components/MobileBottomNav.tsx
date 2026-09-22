@@ -21,7 +21,7 @@ export default function MobileBottomNav({ isAdmin }: { isAdmin: boolean }) {
       active: pathname === '/dashboard',
     },
     {
-      label: 'KALKULATOR',
+      label: 'ESTIMASI & SPK',
       href: '/calculator',
       icon: Calculator,
       active: pathname === '/calculator',

@@ -531,8 +531,8 @@ export default function ProjectsClientList({
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="px-5 py-3.5 min-w-[280px] max-w-[420px]">Nomor & Proyek</th>
-                <th className="px-5 py-3.5 min-w-[200px] max-w-[280px]">Klien & Lokasi</th>
+                <th className="px-5 py-3.5 min-w-[300px] max-w-[450px]">Nomor & Proyek</th>
+                <th className="px-5 py-3.5 min-w-[300px] max-w-[450px]">Klien & Lokasi</th>
                 <th className="px-4 py-3.5 whitespace-nowrap">Cabang</th>
                 <th className="px-4 py-3.5 whitespace-nowrap">Status</th>
                 {isAdmin && <th className="px-4 py-3.5 whitespace-nowrap">Total Deal</th>}
@@ -543,12 +543,12 @@ export default function ProjectsClientList({
             <tbody className="divide-y divide-slate-100">
               {filteredProjects.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50 transition">
-                  <td className="px-5 py-4 min-w-[280px] max-w-[420px] break-words">
+                  <td className="px-5 py-4 min-w-[300px] max-w-[450px] break-words">
                     <div className="font-mono text-xs font-black text-indigo-700">{p.projectNumber}</div>
                     <div className="font-bold text-slate-900 text-sm mt-0.5 leading-snug break-words">{p.title}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">{p.items?.length || 0} Item Reklame</div>
                   </td>
-                  <td className="px-5 py-4 min-w-[200px] max-w-[280px] break-words">
+                  <td className="px-5 py-4 min-w-[300px] max-w-[450px] break-words">
                     <div className="font-bold text-slate-900">{p.clientName}</div>
                     <div className="text-slate-500 text-[11px]">{p.clientPhone}</div>
                     <div className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">{p.installationAddress || '-'}</div>
