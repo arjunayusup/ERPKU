@@ -534,21 +534,41 @@ Kira-kira ukurannya sudah pas Kak? Kalau butuh survey lokasi gratis atau konsult
 export function getMaterialDisplayLabel(slugOrName?: string | null): string {
   if (!slugOrName) return 'Standar Bengkel Reklame';
   const map: Record<string, string> = {
+    // Huruf Timbul
     stainless_biasa_led: 'Huruf Timbul Stainless Steel + LED Backlight',
     stainless_gold_led: 'Huruf Timbul Stainless Steel Gold Titanium + LED',
     stainless_off: 'Huruf Timbul Stainless Steel 201/304 (Non-Lampu)',
     galvanis_duco_off: 'Huruf Timbul Plat Galvanis Cat Duco (Non-Lampu)',
     akrilik_off: 'Huruf Timbul Akrilik Solid Marga Cipta (Non-Lampu)',
     akrilik_dual_glow: 'Huruf Timbul Akrilik Dual Glow (Frontlit + Backlight)',
+    // Neon Box & Billboard
     neon_box_1sisi: 'Neon Box Akrilik 1 Sisi + Lampu TL/LED',
     neon_box_2sisi: 'Neon Box Akrilik 2 Sisi Bolak-Balik + Lampu TL/LED',
     reklame_flexi_korea: 'Papan Reklame Hollow 3x3 + Galvalum + Flexi Korea',
     billboard_heavy_duty: 'Rangka Billboard Siku Heavy Duty',
+    // Logo 3D
+    akrilik_led: 'Logo Akrilik Laser Cut 3D + Visual Oracal + LED Frontlit',
+    stainless_backlight: 'Logo Stainless Steel 3D + Backlight LED Modul',
+    non_lampu: 'Logo Akrilik Solid Marga Cipta 3mm (Tanpa Lampu)',
+    // Background Fasad
+    acp_seven: 'Background Fasad ACP Seven 3mm PVDF + Rangka Hollow',
+    plat_galvanil: 'Background Fasad Plat Galvanil Duco Oven + Rangka Hollow',
+    kisi_hollow: 'Background Fasad Kisi-kisi Hollow Galvanis 2x4',
+    multiplek: 'Background Fasad Multiplek 12mm Finishing HPL/Melamin',
+    // Tiang & Rangka
     tiang_pipa_2: 'Tiang Pipa Besi 2 Inch',
     tiang_pipa_3: 'Tiang Pipa Besi 3 Inch',
     tiang_pipa_4: 'Tiang Pipa Besi 4 Inch',
     tiang_pipa_6: 'Tiang Pipa Besi 6 Inch Schedule',
+    pipa_2: 'Tiang Pipa Besi 2 Inch',
+    pipa_3: 'Tiang Pipa Besi 3 Inch',
+    pipa_4: 'Tiang Pipa Besi 4 Inch',
+    pipa_6: 'Tiang Pipa Besi 6 Inch Schedule',
     rangka_hollow: 'Rangka Besi Hollow & Siku',
+    // Operasional
+    scaffolding: 'Sewa Scaffolding / Steger Lapangan',
+    bongkar: 'Jasa Bongkar Reklame Lama & Pembersihan',
+    kabel: 'Jasa Tarik Kabel Listrik Tambahan',
   };
   return map[slugOrName] || slugOrName;
 }
