@@ -1352,17 +1352,17 @@ function CalculatorContent() {
         </div>
 
         {/* REAL-TIME PREVIEW & ADD ITEM BUTTON */}
-        <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-700/60 shadow-md">
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold text-sm text-amber-400">{currentPreview.description}</span>
+              <span className="font-black text-sm text-white tracking-tight">{currentPreview.description}</span>
               {currentPreview.isMinCharge && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950 uppercase">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
                   Min. 1.0 m²
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-300">{currentPreview.specifications}</p>
+            <p className="text-[11.5px] text-slate-300 font-medium">{currentPreview.specifications}</p>
 
             <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
               {!hideConfidential && (
@@ -1373,18 +1373,22 @@ function CalculatorContent() {
               )}
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-bold block">Harga Jual Rekomendasi:</span>
-                <span className="font-mono font-extrabold text-white text-base">{formatRupiah(currentPreview.finalSell)}</span>
+                <span className="font-mono font-black text-emerald-400 text-base">{formatRupiah(currentPreview.finalSell)}</span>
               </div>
               {!hideConfidential && (
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Margin Estimasi:</span>
-                  <span className="font-mono font-bold text-emerald-400">{currentPreview.margin}%</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                    {currentPreview.margin}%
+                  </span>
                 </div>
               )}
               {currentPreview.ledCount > 0 && (
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Estimasi LED:</span>
-                  <span className="font-mono font-bold text-cyan-300">{currentPreview.ledCount} Modul • {currentPreview.trafoWatt}W Trafo</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-cyan-950/80 text-cyan-300 border border-cyan-700/60">
+                    {currentPreview.ledCount} Modul • {currentPreview.trafoWatt}W Trafo
+                  </span>
                 </div>
               )}
             </div>
@@ -1404,10 +1408,14 @@ function CalculatorContent() {
             <button
               type="button"
               onClick={handleSaveInlineItem}
-              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/30 flex items-center gap-2 transition cursor-pointer"
+              className={`px-5 py-2.5 rounded-xl text-white font-black text-xs shadow-md flex items-center gap-2 transition cursor-pointer ${
+                editingItemId
+                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30'
+                  : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+              }`}
             >
               {editingItemId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              <span>{editingItemId ? 'Simpan Perubahan Item' : '➕ Tambahkan ke Daftar Item'}</span>
+              <span>{editingItemId ? 'Simpan Perubahan Item' : 'Tambahkan ke Daftar Item'}</span>
             </button>
           </div>
         </div>
