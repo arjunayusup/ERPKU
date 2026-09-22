@@ -13,6 +13,7 @@ export default async function MasterDataPage() {
   let rates: any[] = [];
   let clients: any[] = [];
   let users: any[] = [];
+  let teamMembers: any[] = [];
 
   try {
     rates = await prisma.materialRate.findMany({
@@ -25,9 +26,13 @@ export default async function MasterDataPage() {
     users = await prisma.user.findMany({
       orderBy: { role: 'asc' },
     });
+    teamMembers = await prisma.teamMember.findMany({
+      orderBy: { name: 'asc' },
+    });
   } catch (e) {
     console.error('Error loading master data:', e);
   }
+
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -51,7 +56,9 @@ export default async function MasterDataPage() {
         initialRates={rates}
         initialClients={clients}
         initialUsers={users}
+        initialTeamMembers={teamMembers}
       />
     </div>
   );
 }
+

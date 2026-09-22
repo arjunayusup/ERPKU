@@ -59,13 +59,20 @@ async function main() {
     { name: 'Tiang Pipa Besi Tebal 6 Inch', category: 'tiang', unit: 'm', costPrice: 420000, sellPrice: 650000, notes: 'Untuk tiang pylon / billboard besar' },
     { name: 'Pondasi Cor Cakar Ayam + Angkur Baseplate', category: 'tiang', unit: 'titik', costPrice: 500000, sellPrice: 850000, notes: 'Galian pondasi beton K225 + dynabolt angkur' },
 
-    // E. STIKER & AKSESORIS KELISTRIKAN
-    { name: 'Cutting Sticker Oracal 651 Outdoor', category: 'aksesoris', unit: 'm2', costPrice: 135000, sellPrice: 250000, notes: 'Stiker logo neon box & kaca ruko' },
-    { name: 'Cutting Sticker Oracal 8500 Translucent', category: 'aksesoris', unit: 'm2', costPrice: 195000, sellPrice: 350000, notes: 'Khusus tembus cahaya lampu neon box' },
-    { name: 'Lampu Sorot LED Outdoor 50W', category: 'aksesoris', unit: 'pcs', costPrice: 155000, sellPrice: 275000, notes: 'Termasuk tiang bracket sorot' },
-    { name: 'Lampu Sorot LED Outdoor 100W Heavy Duty', category: 'aksesoris', unit: 'pcs', costPrice: 260000, sellPrice: 450000, notes: 'Untuk penerangan billboard malam hari' },
-    { name: 'Modul LED Samsung IP68 Waterproof', category: 'led', unit: 'pcs', costPrice: 3800, sellPrice: 6500, notes: '1.2W / 1.5W per modul' },
-    { name: 'Trafo Rainproof 400W 12V', category: 'trafo', unit: 'pcs', costPrice: 185000, sellPrice: 285000, notes: 'Heavy duty outdoor rainproof' },
+    // F. BACKGROUND FASAD & PAPAN (Per m2)
+    { name: 'ACP Seven 3mm PVDF + Rangka Hollow 4x4', category: 'fasad', unit: 'm2', costPrice: 450000, sellPrice: 750000, notes: 'Aluminium Composite Panel Seven tebal 3mm + rangka hollow galvanis 4x4 anti karat' },
+    { name: 'Plat Galvanil Duco + Rangka Hollow', category: 'fasad', unit: 'm2', costPrice: 400000, sellPrice: 650000, notes: 'Plat galvanil 0.8mm finishing cat duco semi-gloss / doff oven + rangka' },
+    { name: 'Kisi-kisi Hollow Galvanis 2x4', category: 'fasad', unit: 'm2', costPrice: 350000, sellPrice: 550000, notes: 'Bilah kisi-kisi hollow galvanis 2x4 finish cat duco' },
+    { name: 'Multiplek 12mm / Melamin Backwall', category: 'fasad', unit: 'm2', costPrice: 250000, sellPrice: 450000, notes: 'Multiplek tebal 12mm lapis melamin / HPL untuk indoor mall & ruko' },
+
+    // G. OPERASIONAL KHUSUS LAPANGAN
+    { name: 'Sewa Scaffolding / Steger per Set', category: 'operasional', unit: 'set/hari', costPrice: 35000, sellPrice: 65000, notes: 'Main frame, cross brace, catwalk & roda rem transport' },
+    { name: 'Jasa Bongkar Reklame Lama', category: 'operasional', unit: 'lot', costPrice: 250000, sellPrice: 500000, notes: 'Penurunan plang lama, perapihan kabel eksisting & pembersihan area' },
+    { name: 'Jasa Tarik Kabel Listrik Tambahan', category: 'operasional', unit: 'meter', costPrice: 15000, sellPrice: 25000, notes: 'Kabel NYM 2x1.5 standar SNI + pipa konduit pelindung' },
+
+    // H. LOGO & EMBLEM TIMBUL 3D (Per cm2 / unit)
+    { name: 'Logo Akrilik 3D Nyala Depan LED', category: 'logo', unit: 'cm2', costPrice: 35, sellPrice: 70, notes: 'Akrilik laser cut presisi + visual stiker Oracal + LED modul IP68' },
+    { name: 'Logo Stainless Mirror 3D Backlight', category: 'logo', unit: 'cm2', costPrice: 45, sellPrice: 85, notes: 'Stainless 201 mirror/gold + siluet backlight LED' },
   ];
 
   // Bersihkan tarif lama dan masukkan tarif resmi baru
@@ -73,6 +80,23 @@ async function main() {
   for (const r of rates) {
     await prisma.materialRate.create({ data: r });
   }
+
+  // 3. Team Members / Karyawan Lapangan Salsabilla Advertising
+  const teamMembers = [
+    { name: 'Kang Asep', phone: '082315596769', role: 'LEAD_INSTALLER', status: 'ACTIVE', notes: 'Penanggung jawab lapangan & kelistrikan signage' },
+    { name: 'Pak Joko', phone: '081288991122', role: 'DRIVER', status: 'ACTIVE', notes: 'Driver armada pikap Gran Max B 9147 TPA & logistik' },
+    { name: 'Rian Hidayat', phone: '081399882233', role: 'TECHNICIAN', status: 'ACTIVE', notes: 'Teknisi pasang akrilik, modul LED & finishing' },
+    { name: 'Dedi Suryadi', phone: '085711223344', role: 'WELDER', status: 'ACTIVE', notes: 'Tukang las konstruksi rangka hollow & tiang pipa' },
+    { name: 'Dani Kurnia', phone: '087822334455', role: 'HELPER', status: 'ACTIVE', notes: 'Pembantu umum, angkut barang & safety assistant' },
+  ];
+
+  for (const m of teamMembers) {
+    const existing = await prisma.teamMember.findFirst({ where: { phone: m.phone } });
+    if (!existing) {
+      await prisma.teamMember.create({ data: m });
+    }
+  }
+
 
   // 3. Official Sample Project: Ibu Bella (Ref: Surat Penawaran Asli Salsabilla)
   const sampleProject = await prisma.project.upsert({

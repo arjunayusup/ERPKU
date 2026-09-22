@@ -126,10 +126,23 @@ model InstallationSchedule {
   timeSlot       String   // "09:00 - 13:00 (Pagi)", "22:00 - 04:00 (Malam Mall)"
   teamName       String   // "Tim 1 (Kang Asep)", "Tim 2 (Pak Joko)"
   toolsChecklist String   // JSON string of checklist items
-  status         String   @default("scheduled") // scheduled, on_the_way, installing, completed
-  bastSignature  String?  // Base64 digital signature
-  bastPhotos     String?  // JSON array of photo URLs
+  status         String    @default("scheduled") // scheduled, on_the_way, installing, completed
+  assignedMembers String?  // JSON array of assigned team members [{id, name, role, phone}]
+  bastSignature  String?   // Base64 digital signature
+  bastPhotos     String?   // JSON array of photo URLs
   completedAt    DateTime?
 
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   // Nomor WhatsApp
+  role      String   // "LEAD_INSTALLER", "TECHNICIAN", "DRIVER", "WELDER", "HELPER"
+  status    String   @default("ACTIVE") // "ACTIVE", "INACTIVE"
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

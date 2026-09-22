@@ -71,22 +71,27 @@ export async function upsertInstallationScheduleAction(payload: {
   date: string;
   timeSlot: string;
   teamName: string;
-  toolsChecklist?: string[];
+  assignedMembers?: any[];
+  toolsChecklist?: any[];
 }) {
   try {
     const existing = await prisma.installationSchedule.findFirst({
       where: { projectId: payload.projectId },
     });
 
-    const defaultTools = payload.toolsChecklist?.length
-      ? payload.toolsChecklist.map((item) => ({ item, checked: true }))
-      : [
+    const checklistString = payload.toolsChecklist
+      ? JSON.stringify(payload.toolsChecklist)
+      : JSON.stringify([
           { item: 'Scaffolding Main Frame / Tangga Lipat Aluminium', checked: true },
           { item: 'Mesin Bor Beton Hammer + Mata Bor Dynabolt M10/M12', checked: true },
           { item: 'Baut Dynabolt, Sekrup & Sealant Silikon Bening', checked: true },
           { item: 'Trafo Rainproof Cadangan & Kabel Roll Industri', checked: true },
           { item: 'Full Body Harness K3 & Helm Safety Proyek', checked: true },
-        ];
+        ]);
+
+    const assignedMembersString = payload.assignedMembers
+      ? JSON.stringify(payload.assignedMembers)
+      : undefined;
 
     if (existing) {
       await prisma.installationSchedule.update({
@@ -95,7 +100,8 @@ export async function upsertInstallationScheduleAction(payload: {
           date: payload.date,
           timeSlot: payload.timeSlot,
           teamName: payload.teamName,
-          toolsChecklist: JSON.stringify(defaultTools),
+          toolsChecklist: checklistString,
+          ...(assignedMembersString ? { assignedMembers: assignedMembersString } : {}),
         },
       });
     } else {
@@ -105,7 +111,8 @@ export async function upsertInstallationScheduleAction(payload: {
           date: payload.date,
           timeSlot: payload.timeSlot,
           teamName: payload.teamName,
-          toolsChecklist: JSON.stringify(defaultTools),
+          toolsChecklist: checklistString,
+          assignedMembers: assignedMembersString,
           status: 'scheduled',
         },
       });

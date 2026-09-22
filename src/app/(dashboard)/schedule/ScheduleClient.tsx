@@ -8,7 +8,6 @@ import {
   Clock, 
   CheckSquare, 
   Truck, 
-  AlertCircle,
   FileCheck,
   FileText,
   MessageSquare,
@@ -21,12 +20,17 @@ import {
   Loader2,
   Copy,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  HardHat,
+  Wrench,
+  UserCheck
 } from 'lucide-react';
 import { upsertInstallationScheduleAction, updateInstallationScheduleStatusAction } from '@/app/actions/project';
+import { getRecommendedToolsForProject, MASTER_TOOLS, ToolItem } from '@/lib/tools-checklist';
 
 interface ScheduleClientProps {
   schedules: any[];
+  teamMembers?: any[];
 }
 
 const STATUS_LABELS: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -36,7 +40,7 @@ const STATUS_LABELS: Record<string, { label: string; bg: string; text: string; b
   completed: { label: 'Selesai / Terpasang', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
 };
 
-export default function ScheduleClient({ schedules }: ScheduleClientProps) {
+export default function ScheduleClient({ schedules, teamMembers = [] }: ScheduleClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'this_week' | 'upcoming'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,10 +49,14 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [copiedBroadcast, setCopiedBroadcast] = useState(false);
 
-  // Edit form state
+  // Edit modal state
   const [editDate, setEditDate] = useState('');
   const [editTimeSlot, setEditTimeSlot] = useState('');
-  const [editTeam, setEditTeam] = useState('');
+  const [editLeadId, setEditLeadId] = useState('');
+  const [editDriverId, setEditDriverId] = useState('');
+  const [editSelectedTechIds, setEditSelectedTechIds] = useState<string[]>([]);
+  const [editArmadaPlate, setEditArmadaPlate] = useState('Pikap Gran Max B 9147 TPA');
+  const [editTools, setEditTools] = useState<ToolItem[]>([]);
 
   // Today string YYYY-MM-DD
   const now = new Date();
@@ -89,19 +97,83 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
     setEditingSchedule(s);
     setEditDate(s.date || todayStr);
     setEditTimeSlot(s.timeSlot || '09:00 - 14:00 (Pagi-Siang)');
-    setEditTeam(s.teamName || 'Tim 1 (Kang Asep) - Pikap B 9147 TPA');
+
+    // Parse assigned members
+    let assigned: any[] = [];
+    try {
+      assigned = JSON.parse(s.assignedMembers || '[]');
+    } catch {
+      assigned = [];
+    }
+
+    const lead = assigned.find((m: any) => m.role === 'lead_installer');
+    const driver = assigned.find((m: any) => m.role === 'driver');
+    const techIds = assigned.filter((m: any) => m.role === 'technician').map((m: any) => m.id);
+
+    const defaultLead = teamMembers.find((m) => m.role === 'LEAD_INSTALLER')?.id || teamMembers[0]?.id || '';
+    const defaultDriver = teamMembers.find((m) => m.role === 'DRIVER')?.id || teamMembers[1]?.id || '';
+    const defaultTechs = teamMembers.filter((m) => m.role === 'TECHNICIAN').slice(0, 2).map((m) => m.id);
+
+    setEditLeadId(lead?.id || defaultLead);
+    setEditDriverId(driver?.id || defaultDriver);
+    setEditSelectedTechIds(techIds.length > 0 ? techIds : defaultTechs);
+
+    // Parse or generate tools
+    let existingTools: any[] = [];
+    try {
+      existingTools = JSON.parse(s.toolsChecklist || '[]');
+    } catch {
+      existingTools = [];
+    }
+
+    if (existingTools.length > 0) {
+      // Map to full ToolItem format
+      const mapped = MASTER_TOOLS.map((mt) => {
+        const found = existingTools.find((et: any) => (et.name || et.item) === mt.name);
+        return {
+          ...mt,
+          checked: found ? (found.checked !== false) : false,
+        };
+      });
+      setEditTools(mapped);
+    } else {
+      setEditTools(getRecommendedToolsForProject(s.project?.items || []));
+    }
+
+    // Parse armada name
+    if (s.teamName && s.teamName.includes(' - ')) {
+      setEditArmadaPlate(s.teamName.split(' - ')[1] || 'Pikap B 9147 TPA');
+    } else {
+      setEditArmadaPlate(s.teamName || 'Pikap Gran Max B 9147 TPA');
+    }
   };
 
   // Submit Edit Schedule
   const handleSaveEdit = async () => {
     if (!editingSchedule) return;
     setIsSubmitting(true);
+
+    const leadMember = teamMembers.find((m) => m.id === editLeadId);
+    const driverMember = teamMembers.find((m) => m.id === editDriverId);
+    const selectedTechs = teamMembers.filter((m) => editSelectedTechIds.includes(m.id));
+
+    const assignedMembers = [
+      ...(leadMember ? [{ id: leadMember.id, name: leadMember.name, role: 'lead_installer', phone: leadMember.phone }] : []),
+      ...(driverMember ? [{ id: driverMember.id, name: driverMember.name, role: 'driver', phone: driverMember.phone }] : []),
+      ...selectedTechs.map((t) => ({ id: t.id, name: t.name, role: 'technician', phone: t.phone })),
+    ];
+
+    const teamDisplayName = `${leadMember?.name ? 'Tim ' + leadMember.name : 'Tim Lapangan'} - ${editArmadaPlate}`;
+
     const res = await upsertInstallationScheduleAction({
       projectId: editingSchedule.projectId,
       date: editDate,
       timeSlot: editTimeSlot,
-      teamName: editTeam,
+      teamName: teamDisplayName,
+      toolsChecklist: editTools.filter((t) => t.checked),
+      assignedMembers,
     });
+
     setIsSubmitting(false);
     if (res.success) {
       setEditingSchedule(null);
@@ -134,27 +206,54 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
     targetItems.forEach((s, idx) => {
       let checklist: any[] = [];
       try {
-        checklist = JSON.parse(s.toolsChecklist);
+        checklist = JSON.parse(s.toolsChecklist || '[]');
       } catch {
         checklist = [];
       }
-      const tools = checklist.map((c) => (c.item || c.name)).filter(Boolean).slice(0, 3).join(', ');
+
+      let members: any[] = [];
+      try {
+        members = JSON.parse(s.assignedMembers || '[]');
+      } catch {
+        members = [];
+      }
+
+      const lead = members.find((m) => m.role === 'lead_installer');
+      const driver = members.find((m) => m.role === 'driver');
+      const technicians = members.filter((m) => m.role === 'technician');
 
       text += `*${idx + 1}. ${s.project?.title || 'Proyek Reklame'}*\n`;
+      text += `SPK: *${s.project?.projectNumber || '-'}*\n`;
       text += `📅 Tanggal: *${s.date}* (${s.timeSlot})\n`;
-      text += `🚛 Tim Armada: *${s.teamName}*\n`;
       text += `📍 Alamat: ${s.project?.installationAddress || 'Konfirmasi klien'}\n`;
       text += `👤 PIC Klien: ${s.project?.clientName || '-'} (${s.project?.clientPhone || '-'})\n`;
-      if (tools) {
-        text += `🧰 Bawaan: ${tools}\n`;
+      text += `🚛 Tim Armada: *${s.teamName}*\n`;
+      if (lead) text += `   • Lead Installer: *${lead.name}* (${lead.phone || '-'})\n`;
+      if (driver) text += `   • Driver Logistik: *${driver.name}* (${driver.phone || '-'})\n`;
+      if (technicians.length > 0) text += `   • Anggota Teknisi: ${technicians.map((t: any) => t.name).join(', ')}\n`;
+
+      // Scope of work
+      if (s.project?.items && s.project.items.length > 0) {
+        text += `📦 Lingkup Pekerjaan:\n`;
+        s.project.items.forEach((it: any) => {
+          text += `   - ${it.itemName} (${it.quantity} ${it.unit || 'unit'})\n`;
+        });
+      }
+
+      const toolNames = checklist.map((c) => (c.name || c.item || (typeof c === 'string' ? c : ''))).filter(Boolean);
+      if (toolNames.length > 0) {
+        text += `🧰 Checklist Alat Kerja & APD:\n`;
+        toolNames.forEach((t) => {
+          text += `   [ ] ${t}\n`;
+        });
       }
       text += `-------------------------------------------\n\n`;
     });
 
     text += `*⚠️ INSTRUKSI K3 & MUTU OPERASIONAL:*\n`;
-    text += `1. Wajib cek fisik kelengkapan barang & alat sebelum armada keluar bengkel!\n`;
-    text += `2. Wajib gunakan Helm Safety & Body Harness bila ketinggian di atas 2.5 meter.\n`;
-    text += `3. Pastikan customer menandatangani BAST fisik/digital dan foto dokumentasi saat lampu menyala!`;
+    text += `1. Wajib cek fisik kelengkapan barang reklame & alat kerja sebelum armada keluar bengkel!\n`;
+    text += `2. Wajib gunakan Helm Safety & Full Body Harness bila ketinggian di atas 2.5 meter!\n`;
+    text += `3. Pastikan customer menandatangani BAST fisik/digital dan kirim foto dokumentasi saat lampu menyala!`;
 
     return text;
   };
@@ -255,10 +354,21 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
           filteredSchedules.map((s) => {
             let checklist: any[] = [];
             try {
-              checklist = JSON.parse(s.toolsChecklist);
+              checklist = JSON.parse(s.toolsChecklist || '[]');
             } catch {
               checklist = [];
             }
+
+            let members: any[] = [];
+            try {
+              members = JSON.parse(s.assignedMembers || '[]');
+            } catch {
+              members = [];
+            }
+
+            const lead = members.find((m) => m.role === 'lead_installer');
+            const driver = members.find((m) => m.role === 'driver');
+            const technicians = members.filter((m) => m.role === 'technician');
 
             const cleanPhone = s.project?.clientPhone ? s.project.clientPhone.replace(/[^0-9]/g, '') : '';
             const waNumber = cleanPhone.startsWith('0') ? '62' + cleanPhone.substring(1) : cleanPhone;
@@ -288,7 +398,7 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
                       <h2 className="text-base font-extrabold text-slate-900">
                         {s.project?.title || 'Proyek Tanpa Judul'}
                       </h2>
-                      <span className="text-xs font-mono text-slate-400">
+                      <span className="text-xs font-mono text-indigo-700 font-bold">
                         ({s.project?.projectNumber || '-'})
                       </span>
                     </div>
@@ -315,6 +425,31 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
                   </div>
                 </div>
 
+                {/* Team Assignment Badges */}
+                {members.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                    <span className="font-bold text-indigo-950 flex items-center gap-1 mr-1">
+                      <HardHat className="w-3.5 h-3.5 text-indigo-700" />
+                      Personil Bertugas:
+                    </span>
+                    {lead && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-900 font-bold">
+                        <span>👑 Lead:</span> {lead.name}
+                      </span>
+                    )}
+                    {driver && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 font-bold">
+                        <span>🚚 Driver:</span> {driver.name}
+                      </span>
+                    )}
+                    {technicians.map((t: any, tidx: number) => (
+                      <span key={tidx} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">
+                        <span>🔧</span> {t.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Location & Client Info */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div className="flex items-start gap-2.5">
@@ -340,6 +475,20 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
                     </a>
                   )}
                 </div>
+
+                {/* Scope of Work Items */}
+                {s.project?.items && s.project.items.length > 0 && (
+                  <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 text-xs">
+                    <span className="font-bold text-slate-800 block mb-1.5">📦 Rincian Pekerjaan:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {s.project.items.map((it: any, itemIdx: number) => (
+                        <span key={itemIdx} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-medium text-slate-700">
+                          {it.itemName} ({it.quantity} {it.unit || 'unit'})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Tools Checklist Box */}
                 <div>
@@ -410,18 +559,18 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
         )}
       </div>
 
-      {/* MODAL 1: EDIT JADWAL PEMASANGAN */}
+      {/* MODAL 1: EDIT JADWAL PEMASANGAN & PERSONIL */}
       {editingSchedule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
                   <Calendar className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">Ubah Jadwal Pemasangan</h3>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <h3 className="text-base font-extrabold text-slate-900">Ubah Jadwal & Penugasan Tim</h3>
+                  <p className="text-xs text-slate-500 font-medium truncate max-w-sm">
                     {editingSchedule.project?.title}
                   </p>
                 </div>
@@ -435,48 +584,148 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Tanggal Pemasangan Lapangan:
-                </label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-indigo-600"
-                />
+            <div className="space-y-3.5 text-xs max-h-[70vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Tanggal Pemasangan Lapangan:
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-indigo-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Slot Waktu Pemasangan:
+                  </label>
+                  <select
+                    value={editTimeSlot}
+                    onChange={(e) => setEditTimeSlot(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-indigo-600 cursor-pointer"
+                  >
+                    <option value="09:00 - 14:00 (Pagi-Siang)">09:00 - 14:00 WIB (Pagi-Siang Normal)</option>
+                    <option value="14:00 - 18:00 (Siang-Sore)">14:00 - 18:00 WIB (Siang-Sore)</option>
+                    <option value="22:00 - 04:00 (Malam Mall/Ruko)">22:00 - 04:00 WIB (Shift Malam Mall / Ruko Tertutup)</option>
+                    <option value="Full Day (09:00 - Selesai)">Full Day (Pemasangan Konstruksi Besar)</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Slot Waktu Pemasangan:
-                </label>
-                <select
-                  value={editTimeSlot}
-                  onChange={(e) => setEditTimeSlot(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-indigo-600 cursor-pointer"
-                >
-                  <option value="09:00 - 14:00 (Pagi-Siang)">09:00 - 14:00 (Pagi-Siang Normal)</option>
-                  <option value="14:00 - 18:00 (Siang-Sore)">14:00 - 18:00 (Siang-Sore)</option>
-                  <option value="22:00 - 04:00 (Malam Mall/Ruko)">22:00 - 04:00 (Shift Malam Mall / Ruko Tertutup)</option>
-                  <option value="Full Day (09:00 - Selesai)">Full Day (Pemasangan Konstruksi Besar)</option>
-                </select>
+              {/* TIM & PERSONIL DARI MASTER */}
+              <div className="p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-200 space-y-3">
+                <span className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
+                  <HardHat className="w-4 h-4 text-indigo-700" />
+                  Penugasan Tim Lapangan (Dari Master Karyawan)
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Lead Installer (Penanggung Jawab):</label>
+                    <select
+                      value={editLeadId}
+                      onChange={(e) => setEditLeadId(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900 cursor-pointer"
+                    >
+                      {teamMembers.length === 0 && <option value="">Belum ada personil di master data</option>}
+                      {teamMembers.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.role === 'LEAD_INSTALLER' ? 'Lead' : m.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Driver & Logistik Armada:</label>
+                    <select
+                      value={editDriverId}
+                      onChange={(e) => setEditDriverId(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900 cursor-pointer"
+                    >
+                      {teamMembers.length === 0 && <option value="">Belum ada personil di master data</option>}
+                      {teamMembers.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Pilih Anggota Teknisi Tambahan:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2 bg-white rounded-xl border border-slate-200">
+                    {teamMembers.filter((m) => m.id !== editLeadId).map((m) => {
+                      const isChecked = editSelectedTechIds.includes(m.id);
+                      return (
+                        <label key={m.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs cursor-pointer hover:bg-slate-100">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditSelectedTechIds([...editSelectedTechIds, m.id]);
+                              else setEditSelectedTechIds(editSelectedTechIds.filter((id) => id !== m.id));
+                            }}
+                            className="rounded text-indigo-600 w-3.5 h-3.5"
+                          />
+                          <span className="truncate font-medium text-slate-800">{m.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Armada Pikap / Plat Nomor:</label>
+                  <input
+                    type="text"
+                    value={editArmadaPlate}
+                    onChange={(e) => setEditArmadaPlate(e.target.value)}
+                    placeholder="Contoh: Pikap Gran Max B 9147 TPA"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-900"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Tim Lapangan & Armada Pikap:
-                </label>
-                <select
-                  value={editTeam}
-                  onChange={(e) => setEditTeam(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-indigo-600 cursor-pointer"
-                >
-                  <option value="Tim 1 (Kang Asep) - Pikap B 9147 TPA">Tim 1 (Kang Asep) - Pikap B 9147 TPA</option>
-                  <option value="Tim 2 (Pak Joko) - Pikap B 9821 KYZ">Tim 2 (Pak Joko) - Pikap B 9821 KYZ</option>
-                  <option value="Tim Gabungan 1 & 2 (Konstruksi Tiang)">Tim Gabungan 1 & 2 (Tiang / Ukuran Besar)</option>
-                </select>
+              {/* CHECKLIST ALAT & APD */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Checklist Peralatan & Standar K3 Lapangan:</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Ceklis yang dibawa</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  {editTools.map((t, idx) => (
+                    <label
+                      key={idx}
+                      className={`flex items-start gap-2 p-2 rounded-lg border text-xs cursor-pointer transition ${
+                        t.checked ? 'bg-white border-slate-300' : 'bg-slate-100/60 border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={t.checked}
+                        onChange={(e) => {
+                          const updated = [...editTools];
+                          updated[idx].checked = e.target.checked;
+                          setEditTools(updated);
+                        }}
+                        className="rounded text-indigo-600 w-3.5 h-3.5 mt-0.5 shrink-0"
+                      />
+                      <div className="leading-tight">
+                        <span className="font-bold text-slate-900 block">{t.name}</span>
+                        {t.reason && <span className="text-[10px] text-amber-700 font-medium block mt-0.5">{t.reason}</span>}
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -503,7 +752,7 @@ export default function ScheduleClient({ schedules }: ScheduleClientProps) {
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Simpan Jadwal</span>
+                    <span>Simpan Perubahan</span>
                   </>
                 )}
               </button>

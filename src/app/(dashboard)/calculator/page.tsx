@@ -16,6 +16,7 @@ import {
 } from '@/lib/calculator-modular';
 import { getAllBranches, getBranchConfig } from '@/lib/branches';
 import { createQuotationAction, updateQuotationAction, getQuotationByIdAction } from '@/app/actions/quotation';
+import AddonsModal from './AddonsModal';
 import { 
   Calculator, 
   Plus, 
@@ -74,6 +75,14 @@ function CalculatorContent() {
   const [modalPondasiPoints, setModalPondasiPoints] = useState(1);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [modalCustomDesc, setModalCustomDesc] = useState('');
+
+  // 3b. MODAL ADD-ONS TERPADU (MEDIA, FASAD, LOGO & TIANG)
+  const [isAddonsModalOpen, setIsAddonsModalOpen] = useState(false);
+
+  const handleApplyAddons = (newItems: MultiItemLine[]) => {
+    setItems((prev) => [...prev, ...newItems]);
+    setCustomDealPrice(null); // AUTO-RESET HARGA NEGO AGAR AKURAT
+  };
 
   // 4. NEGOSIASI DUA ARAH
   const [customDealPrice, setCustomDealPrice] = useState<number | null>(null);
@@ -614,15 +623,27 @@ function CalculatorContent() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleOpenNewItem}
-                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Tambah Item</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddonsModalOpen(true)}
+                  className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>+ Add-ons Media & Struktur</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenNewItem}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Item</span>
+                </button>
+              </div>
             </div>
+
 
             {/* List Item Table / Cards */}
             {items.length === 0 ? (
@@ -1124,9 +1145,18 @@ function CalculatorContent() {
           </button>
         </div>
       </div>
+
+      {/* 4. MODAL ADD-ONS MEDIA & STRUKTUR */}
+      <AddonsModal
+        isOpen={isAddonsModalOpen}
+        onClose={() => setIsAddonsModalOpen(false)}
+        onApplyAddons={handleApplyAddons}
+      />
     </div>
+
   );
 }
+
 
 export default function CalculatorPage() {
   return (

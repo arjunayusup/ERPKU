@@ -8,6 +8,7 @@ export default async function ProjectsPage() {
   const isAdmin = session?.role === 'admin';
 
   let projects: any[] = [];
+  let teamMembers: any[] = [];
   try {
     projects = await prisma.project.findMany({
       orderBy: { createdAt: 'desc' },
@@ -17,9 +18,14 @@ export default async function ProjectsPage() {
         installations: true,
       }
     });
+    teamMembers = await prisma.teamMember.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { name: 'asc' },
+    });
   } catch (e) {
     console.error('Error fetching projects:', e);
   }
+
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -49,7 +55,12 @@ export default async function ProjectsPage() {
       </div>
 
       {/* Interactive Projects List with Search, Filter & Trash */}
-      <ProjectsClientList initialProjects={projects} isAdmin={isAdmin} />
+      <ProjectsClientList 
+        initialProjects={projects} 
+        isAdmin={isAdmin} 
+        teamMembers={teamMembers} 
+      />
     </div>
   );
 }
+

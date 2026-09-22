@@ -163,3 +163,111 @@ export async function deleteClientAction(id: string) {
     return { success: false, error: e.message };
   }
 }
+
+// ==========================================
+// 3. TEAM MEMBER (KARYAWAN) CRUD ACTIONS
+// ==========================================
+
+export async function createTeamMemberAction(formData: FormData) {
+  try {
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
+    const role = formData.get('role') as string || 'TECHNICIAN';
+    const notes = formData.get('notes') as string || '';
+
+    if (!name || !phone) {
+      return { success: false, error: 'Nama personil dan nomor WhatsApp wajib diisi.' };
+    }
+
+    const rawPhone = phone.replace(/[^0-9]/g, '');
+    let cleanPhone = rawPhone;
+    if (rawPhone.startsWith('0')) cleanPhone = '62' + rawPhone.substring(1);
+    else if (!rawPhone.startsWith('62')) cleanPhone = '62' + rawPhone;
+
+    await prisma.teamMember.create({
+      data: {
+        name,
+        phone: cleanPhone,
+        role,
+        notes,
+        status: 'ACTIVE',
+      },
+    });
+
+    revalidatePath('/master');
+    revalidatePath('/schedule');
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function updateTeamMemberAction(id: string, formData: FormData) {
+  try {
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
+    const role = formData.get('role') as string || 'TECHNICIAN';
+    const status = formData.get('status') as string || 'ACTIVE';
+    const notes = formData.get('notes') as string || '';
+
+    const rawPhone = phone.replace(/[^0-9]/g, '');
+    let cleanPhone = rawPhone;
+    if (rawPhone.startsWith('0')) cleanPhone = '62' + rawPhone.substring(1);
+    else if (!rawPhone.startsWith('62')) cleanPhone = '62' + rawPhone;
+
+    await prisma.teamMember.update({
+      where: { id },
+      data: {
+        name,
+        phone: cleanPhone,
+        role,
+        status,
+        notes,
+      },
+    });
+
+    revalidatePath('/master');
+    revalidatePath('/schedule');
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function toggleTeamMemberStatusAction(id: string) {
+  try {
+    const member = await prisma.teamMember.findUnique({ where: { id } });
+    if (!member) return { success: false, error: 'Personil tidak ditemukan.' };
+
+    const newStatus = member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    await prisma.teamMember.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    revalidatePath('/master');
+    revalidatePath('/schedule');
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function deleteTeamMemberAction(id: string) {
+  try {
+    await prisma.teamMember.delete({
+      where: { id },
+    });
+
+    revalidatePath('/master');
+    revalidatePath('/schedule');
+    revalidatePath('/projects');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
