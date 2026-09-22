@@ -419,34 +419,44 @@ export default async function DocumentPage({
               <div className="space-y-2">
                 {project.items.map((it, i) => {
                   const snap = typeof it.specSnapshot === 'string' ? JSON.parse(it.specSnapshot) : (it.specSnapshot || {});
+                  const noteText = snap.fabricationNotes || snap.poNotes || it.qcNotes;
                   return (
-                    <div key={it.id} className="p-2.5 bg-slate-50 border border-slate-300 rounded text-[11px] grid grid-cols-1 md:grid-cols-4 gap-2">
-                      <div>
-                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Item #{i + 1}:</span>
-                        <p className="font-extrabold text-slate-900">{it.description}</p>
-                        <p className="text-slate-600 text-[10px] font-mono">{formatItemSizeClean(it)}</p>
+                    <div key={it.id} className="p-3 bg-slate-50 border border-slate-300 rounded text-[11px] space-y-1.5">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <div>
+                          <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Item #{i + 1}:</span>
+                          <p className="font-extrabold text-slate-900">{it.description}</p>
+                          <p className="text-indigo-700 font-mono font-bold text-[10.5px]">
+                            {snap.dimensions || formatItemSizeClean(it)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Bahan Utama & Dudukan:</span>
+                          <p className="font-bold text-slate-900">{snap.materialName || getMaterialDisplayLabel(it.material)}</p>
+                          <p className="text-slate-600 text-[10px]">{snap.mountType || snap.mountSpec || 'Tempel Dinding Langsung'}</p>
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] text-slate-500 font-bold block uppercase">LED & Trafo (Fisik):</span>
+                          <p className="font-bold text-slate-900">
+                            {it.ledCount || snap.ledCount ? `${it.ledCount || snap.ledCount} Modul LED IP68` : 'Non-Lampu'}
+                          </p>
+                          <p className="text-slate-600 text-[10px]">
+                            {it.trafoWatt || snap.trafoWatt ? `Trafo ${it.trafoWatt || snap.trafoWatt}W Rainproof` : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Visual / Stiker / Cat:</span>
+                          <p className="font-semibold text-slate-800">{snap.stickerSpec || 'Standar Workshop'}</p>
+                          <p className="text-slate-600 text-[10px]">{snap.paintSpec || '-'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Stiker & Finishing Cat:</span>
-                        <p className="font-bold text-slate-800">{snap.stickerSpec || 'Sesuai Standar Bengkel'}</p>
-                        <p className="text-slate-600 text-[10px]">{snap.paintSpec || 'Tanpa Cat Khusus'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">LED & Trafo (Fisik):</span>
-                        <p className="font-bold text-slate-900">
-                          {it.ledCount || snap.ledCount ? `${it.ledCount || snap.ledCount} Modul LED IP68` : 'Non-Lampu'}
-                        </p>
-                        <p className="text-slate-600 text-[10px]">
-                          {it.trafoWatt || snap.trafoWatt ? `Trafo ${it.trafoWatt || snap.trafoWatt}W Rainproof` : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[9.5px] text-slate-500 font-bold block uppercase">Dudukan & Catatan PO:</span>
-                        <p className="font-semibold text-slate-800">{snap.mountSpec || 'Tempel Dinding Langsung'}</p>
-                        {snap.poNotes && (
-                          <p className="text-rose-700 font-medium italic text-[10px] mt-0.5">Note: {snap.poNotes}</p>
-                        )}
-                      </div>
+
+                      {noteText && (
+                        <div className="bg-amber-50/90 border border-amber-200 rounded p-2 text-slate-800 text-[11px] leading-snug">
+                          <span className="font-extrabold text-amber-900 uppercase text-[10px] block">Instruksi Khusus Fabrikasi Bengkel:</span>
+                          <p className="font-medium mt-0.5">{noteText}</p>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

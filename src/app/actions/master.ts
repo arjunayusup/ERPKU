@@ -83,6 +83,18 @@ export async function deleteMaterialRateAction(id: string) {
   }
 }
 
+export async function getMaterialRatesAction() {
+  try {
+    const rates = await prisma.materialRate.findMany({
+      where: { isActive: true },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    });
+    return { success: true, data: rates };
+  } catch (e: any) {
+    return { success: false, error: e.message, data: [] };
+  }
+}
+
 // ==========================================
 // 2. CLIENT (CUSTOMER) CRUD ACTIONS
 // ==========================================
