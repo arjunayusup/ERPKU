@@ -183,11 +183,12 @@ function CalculatorContent() {
 
   // Neon Box State
   const [boxShape, setBoxShape] = useState<'kotak' | 'bulat' | 'mangkokan'>('kotak');
-  const [boxSides, setBoxSides] = useState<'1sisi' | '2sisi'>('1sisi');
+  const [boxText, setBoxText] = useState<string>('');
   const [boxWidthCm, setBoxWidthCm] = useState<number>(100);
   const [boxHeightCm, setBoxHeightCm] = useState<number>(100);
 
-  // Fasad State
+  // Fasad / Billboard State
+  const [fasadText, setFasadText] = useState<string>('');
   const [fasadLengthCm, setFasadLengthCm] = useState<number>(300);
   const [fasadHeightCm, setFasadHeightCm] = useState<number>(120);
 
@@ -338,17 +339,16 @@ function CalculatorContent() {
       isMinCharge = rawArea > 0 && rawArea < 1.0;
       areaM2 = rawArea > 0 ? Math.max(1.0, rawArea) : 0;
 
-      // Rate modifier for 2 sisi or mangkokan
+      // Rate modifier untuk bentuk mangkokan (proses moulding/tekuk cembung)
       let multiFactor = 1.0;
-      if (boxSides === '2sisi') multiFactor = 1.45;
-      if (boxShape === 'mangkokan') multiFactor *= 1.15;
+      if (boxShape === 'mangkokan') multiFactor = 1.15;
 
       unitSell = Math.round(areaM2 * rateSell * multiFactor);
       unitHpp = Math.round(areaM2 * rateCost * multiFactor);
 
-      const shapeLabel = boxShape === 'mangkokan' ? 'Mangkokan' : boxShape === 'bulat' ? 'Bulat Round' : 'Kotak';
-      const sideLabel = boxSides === '2sisi' ? '2 Sisi' : '1 Sisi';
-      autoDesc = customItemTitle || `Neon Box ${shapeLabel} (${sideLabel})`;
+      const shapeLabel = boxShape === 'mangkokan' ? 'Mangkokan' : boxShape === 'bulat' ? 'Bulat' : 'Kotak';
+      const cleanBoxText = boxText.trim();
+      autoDesc = customItemTitle || (cleanBoxText ? `Neon Box ${shapeLabel} "${cleanBoxText.toUpperCase()}"` : `Neon Box ${shapeLabel} (${selectedMaterial.name})`);
       autoSpecs = `${selectedMaterial.name} • Dimensi ${w} x ${h} cm (${areaM2.toFixed(2)} m²)`;
 
       ledCount = Math.max(18, Math.ceil(areaM2 * 35));
@@ -364,8 +364,9 @@ function CalculatorContent() {
       unitSell = Math.round(areaM2 * rateSell);
       unitHpp = Math.round(areaM2 * rateCost);
 
-      autoDesc = customItemTitle || `Background Fasad Reklame (${areaM2.toFixed(2)} m²)`;
-      autoSpecs = `${selectedMaterial.name} • Dimensi ${len} x ${h} cm`;
+      const cleanFasadText = fasadText.trim();
+      autoDesc = customItemTitle || (cleanFasadText ? `Billboard Fasad "${cleanFasadText.toUpperCase()}"` : `Fasad / Billboard (${selectedMaterial.name})`);
+      autoSpecs = `${selectedMaterial.name} • Dimensi ${len} x ${h} cm (${areaM2.toFixed(2)} m²)`;
 
     } else if (activeCategory === 'tiang') {
       const h = Math.max(0, parseSafeNumber(poleHeightMeter, 3));
@@ -448,9 +449,10 @@ function CalculatorContent() {
     letterHeightCm,
     letterDepthCm,
     boxShape,
-    boxSides,
+    boxText,
     boxWidthCm,
     boxHeightCm,
+    fasadText,
     fasadLengthCm,
     fasadHeightCm,
     poleHeightMeter,
@@ -540,7 +542,13 @@ function CalculatorContent() {
       description: currentPreview.description,
       specifications: currentPreview.specifications,
       dimensions: dimString,
-      textOrLabel: activeCategory === 'huruf_timbul' ? letterText : undefined,
+      textOrLabel: activeCategory === 'huruf_timbul'
+        ? (letterText.trim() || undefined)
+        : activeCategory === 'neon_box'
+        ? (boxText.trim() || undefined)
+        : activeCategory === 'fasad'
+        ? (fasadText.trim() || undefined)
+        : undefined,
       charCount: activeCategory === 'huruf_timbul' ? charCount : undefined,
       heightCm: activeCategory === 'huruf_timbul' ? Number(letterHeightCm) : activeCategory === 'neon_box' ? Number(boxHeightCm) : Number(fasadHeightCm),
       widthCm: activeCategory === 'neon_box' ? Number(boxWidthCm) : activeCategory === 'fasad' ? Number(fasadLengthCm) : undefined,
@@ -572,6 +580,8 @@ function CalculatorContent() {
     // Reset fields for quick consecutive inputs
     setCustomItemTitle('');
     setLetterText('');
+    setBoxText('');
+    setFasadText('');
     setFabricationNotes('');
   };
 
@@ -592,9 +602,11 @@ function CalculatorContent() {
       setCharCount(item.charCount || 10);
       setLetterHeightCm(item.heightCm || 20);
     } else if (item.itemType === 'neon_box') {
+      setBoxText(item.textOrLabel || '');
       setBoxWidthCm(item.widthCm || 100);
       setBoxHeightCm(item.heightCm || 100);
     } else if (item.itemType === 'fasad') {
+      setFasadText(item.textOrLabel || '');
       setFasadLengthCm(item.widthCm || 300);
       setFasadHeightCm(item.heightCm || 120);
     } else if (item.itemType === 'tiang') {
@@ -613,6 +625,8 @@ function CalculatorContent() {
     setEditingItemId(null);
     setCustomItemTitle('');
     setLetterText('');
+    setBoxText('');
+    setFasadText('');
     setFabricationNotes('');
   };
 
@@ -636,10 +650,19 @@ function CalculatorContent() {
   };
 
   const handleConfirmClientModal = async () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
-      toast.error('Nama Usaha Klien dan Nomor WhatsApp wajib diisi.');
+    const cleanWhatsApp = clientPhone.trim();
+    const cleanClient = clientName.trim();
+
+    if (!cleanWhatsApp) {
+      toast.error('Nomor WhatsApp Klien wajib diisi.');
       return;
     }
+    if (!cleanClient) {
+      toast.error('Nama Klien / Brand Usaha wajib diisi.');
+      return;
+    }
+
+    const finalProjectName = projectName.trim() || `Signage - ${cleanClient}`;
 
     const finalItems = customDealPrice && customDealPrice > 0 && customDealPrice !== baseSubtotal
       ? distributeNegotiatedTotal(items, effectiveGrandTotal)
@@ -653,11 +676,11 @@ function CalculatorContent() {
         // UPDATE PROJECT
         const res = await updateQuotationAction(editId, {
           branch: branchId,
-          projectName: projectName || `Signage - ${clientName}`,
-          clientName,
-          picName,
-          clientPhone,
-          installationAddress,
+          projectName: finalProjectName,
+          clientName: cleanClient,
+          picName: picName.trim() || undefined,
+          clientPhone: cleanWhatsApp,
+          installationAddress: installationAddress.trim() || undefined,
           subtotal: baseSubtotal,
           totalDeal: effectiveGrandTotal,
           totalHpp: baseHppTotal,
@@ -689,11 +712,11 @@ function CalculatorContent() {
         // CREATE NEW PROJECT
         const res = await createQuotationAction({
           branch: branchId,
-          projectName: projectName || `Signage - ${clientName}`,
-          clientName,
-          picName,
-          clientPhone,
-          installationAddress,
+          projectName: finalProjectName,
+          clientName: cleanClient,
+          picName: picName.trim() || undefined,
+          clientPhone: cleanWhatsApp,
+          installationAddress: installationAddress.trim() || undefined,
           subtotal: baseSubtotal,
           totalDeal: effectiveGrandTotal,
           totalHpp: baseHppTotal,
@@ -729,14 +752,14 @@ function CalculatorContent() {
       toast.success(isEditMode ? 'Perubahan proyek berhasil disimpan!' : 'Proyek SPK berhasil dibuat!');
 
       if (clientModalAction === 'whatsapp') {
-        const rawNumber = clientPhone.replace(/[^0-9]/g, '');
+        const rawNumber = cleanWhatsApp.replace(/[^0-9]/g, '');
         let cleanNumber = rawNumber;
         if (rawNumber.startsWith('0')) cleanNumber = '62' + rawNumber.substring(1);
         else if (!rawNumber.startsWith('62')) cleanNumber = '62' + rawNumber;
 
         const message = generateWhatsAppQuoteText({
-          clientName,
-          projectName: projectName || `Signage - ${clientName}`,
+          clientName: cleanClient,
+          projectName: finalProjectName,
           items,
           grandTotal: effectiveGrandTotal,
           branchId,
@@ -896,8 +919,8 @@ function CalculatorContent() {
             }`}
           >
             <Building className="w-4 h-4 text-blue-400" />
-            <span className="font-extrabold text-xs">BACKGROUND FASAD</span>
-            <span className="text-[9px] opacity-75">ACP Seven, Plat Duco</span>
+            <span className="font-extrabold text-xs">FASAD & BILLBOARD</span>
+            <span className="text-[9px] opacity-75">ACP, Flexi Korea, Spanduk</span>
           </button>
 
           <button
@@ -1033,7 +1056,7 @@ function CalculatorContent() {
           {/* B. NEON BOX */}
           {activeCategory === 'neon_box' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1.5">Bentuk Neon Box:</label>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -1045,7 +1068,7 @@ function CalculatorContent() {
                         className={`py-2 rounded-xl border text-center font-bold capitalize transition cursor-pointer text-xs ${
                           boxShape === shape
                             ? 'bg-slate-900 text-white border-slate-900'
-                            : 'bg-white text-slate-700 border-slate-300'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         {shape}
@@ -1055,36 +1078,24 @@ function CalculatorContent() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1.5">Tampilan Sisi:</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBoxSides('1sisi')}
-                      className={`py-2 rounded-xl border text-center font-bold transition cursor-pointer text-xs ${
-                        boxSides === '1sisi'
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      1 Sisi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBoxSides('2sisi')}
-                      className={`py-2 rounded-xl border text-center font-bold transition cursor-pointer text-xs ${
-                        boxSides === '2sisi'
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      2 Sisi
-                    </button>
-                  </div>
+                  <label className="font-bold text-slate-700 block mb-1.5">
+                    Teks / Nama Merk / Logo <span className="text-slate-400 font-normal">(Opsional)</span>:
+                  </label>
+                  <input
+                    type="text"
+                    value={boxText}
+                    onChange={(e) => setBoxText(e.target.value)}
+                    placeholder="Contoh: ROTIO / Kopi Kenangan"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Nama merk akan otomatis tercetak di penawaran & SPK</p>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1.5">
-                    {boxShape === 'bulat' ? 'Diameter (cm):' : 'Panjang (cm):'}
+                    {boxShape === 'bulat' ? 'Diameter Lingkaran (cm):' : 'Panjang (cm):'}
                   </label>
                   <div className="relative">
                     <input
@@ -1097,29 +1108,33 @@ function CalculatorContent() {
                         if (boxShape === 'bulat') setBoxHeightCm(val);
                       }}
                       placeholder="100"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <span className="absolute right-3 top-2 font-bold text-slate-400 text-xs">cm</span>
                   </div>
                 </div>
-              </div>
 
-              {boxShape !== 'bulat' && (
-                <div className="text-xs">
-                  <label className="font-bold text-slate-700 block mb-1">Tinggi Vertikal (cm):</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={20}
-                      value={boxHeightCm === 0 ? '' : boxHeightCm}
-                      onChange={(e) => setBoxHeightCm(parseSafeNumber(e.target.value, 0))}
-                      placeholder="100"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none"
-                    />
-                    <span className="absolute right-3 top-2 font-bold text-slate-400 text-xs">cm</span>
+                {boxShape !== 'bulat' ? (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1.5">Tinggi Vertikal (cm):</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={20}
+                        value={boxHeightCm === 0 ? '' : boxHeightCm}
+                        onChange={(e) => setBoxHeightCm(parseSafeNumber(e.target.value, 0))}
+                        placeholder="100"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <span className="absolute right-3 top-2 font-bold text-slate-400 text-xs">cm</span>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="flex items-center text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span>💡 <strong>Bentuk Bulat:</strong> Tinggi otomatis sama dengan diameter lingkaran ({boxWidthCm} cm).</span>
+                  </div>
+                )}
+              </div>
 
               {/* Area & Minimum Charge Status */}
               <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs">
@@ -1145,36 +1160,52 @@ function CalculatorContent() {
             </div>
           )}
 
-          {/* C. BACKGROUND FASAD */}
+          {/* C. BACKGROUND FASAD & BILLBOARD */}
           {activeCategory === 'fasad' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Panjang Bentangan Fasad (cm):</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={50}
-                    value={fasadLengthCm === 0 ? '' : fasadLengthCm}
-                    onChange={(e) => setFasadLengthCm(parseSafeNumber(e.target.value, 0))}
-                    placeholder="300"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none"
-                  />
-                  <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">cm</span>
-                </div>
+                <label className="font-bold text-slate-700 block mb-1.5">
+                  Teks / Nama Brand / Visual Billboard <span className="text-slate-400 font-normal">(Opsional)</span>:
+                </label>
+                <input
+                  type="text"
+                  value={fasadText}
+                  onChange={(e) => setFasadText(e.target.value)}
+                  placeholder="Contoh: ROTIO / Billboard Apotek Sehat"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Nama brand / materi spanduk billboard yang terpasang</p>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Tinggi Bentangan Fasad (cm):</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={50}
-                    value={fasadHeightCm === 0 ? '' : fasadHeightCm}
-                    onChange={(e) => setFasadHeightCm(parseSafeNumber(e.target.value, 0))}
-                    placeholder="120"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none"
-                  />
-                  <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">cm</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Panjang Bentangan (cm):</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={50}
+                      value={fasadLengthCm === 0 ? '' : fasadLengthCm}
+                      onChange={(e) => setFasadLengthCm(parseSafeNumber(e.target.value, 0))}
+                      placeholder="300"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">cm</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Tinggi Bentangan (cm):</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={50}
+                      value={fasadHeightCm === 0 ? '' : fasadHeightCm}
+                      onChange={(e) => setFasadHeightCm(parseSafeNumber(e.target.value, 0))}
+                      placeholder="120"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">cm</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1650,67 +1681,53 @@ function CalculatorContent() {
               </button>
             </div>
 
-            {/* Modal Body */}
+            {/* Modal Body - Ringkas & Cepat (Khusus halaman Kalkulator/Penawaran Awal) */}
             <div className="p-6 space-y-4 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  Nama Brand / Usaha Klien <span className="text-rose-600">*</span>:
+                  No. WhatsApp Klien <span className="text-rose-600">*</span>:
                 </label>
                 <input
-                  type="text"
-                  autoFocus
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Contoh: Kopi Kenangan / PT Maju Jaya"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  type="tel"
+                  autoFocus={!clientPhone}
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  placeholder="Contoh: 081318486932 atau 6281318486932"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    No. WhatsApp Klien <span className="text-rose-600">*</span>:
-                  </label>
-                  <input
-                    type="text"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    placeholder="Contoh: 081234567890"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Nama PIC Kontak Person:</label>
-                  <input
-                    type="text"
-                    value={picName}
-                    onChange={(e) => setPicName(e.target.value)}
-                    placeholder="Contoh: Bpk. Hendra"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-900 focus:bg-white focus:outline-none"
-                  />
-                </div>
+                <p className="text-[10px] text-slate-500 mt-1">Nomor tujuan langsung pengiriman pesan penawaran WA</p>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Nama / Judul Pekerjaan:</label>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Nama Klien / Brand Usaha <span className="text-rose-600">*</span>:
+                </label>
+                <input
+                  type="text"
+                  autoFocus={Boolean(clientPhone && !clientName)}
+                  value={clientName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setClientName(val);
+                    if (!projectName || projectName.startsWith('Signage - ') || projectName.startsWith('Signage ')) {
+                      setProjectName(`Signage - ${val}`);
+                    }
+                  }}
+                  placeholder="Contoh: ROTIO / Kopi Kenangan"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Nama / Judul Pekerjaan:
+                </label>
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder={`Contoh: Signage Reklame ${clientName || 'Klien'}`}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-900 focus:bg-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Alamat Titik Pemasangan:</label>
-                <input
-                  type="text"
-                  value={installationAddress}
-                  onChange={(e) => setInstallationAddress(e.target.value)}
-                  placeholder="Contoh: Ruko Grand Galaxy City Blok RGA No. 12"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-900 focus:bg-white focus:outline-none"
+                  placeholder={`Contoh: Signage - ${clientName || 'ROTIO'}`}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
@@ -1727,6 +1744,11 @@ function CalculatorContent() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-[11px] text-slate-500 flex items-center gap-2">
+                <span className="text-amber-500 text-sm">💡</span>
+                <span>Alamat pasang lengkap, PIC, & catatan spesifikasi bengkel dapat dilengkapi di halaman detail proyek.</span>
               </div>
             </div>
 

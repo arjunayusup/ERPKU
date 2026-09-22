@@ -92,59 +92,112 @@ export async function createQuotationAction(payload: CreateQuotationPayload) {
       });
     }
 
-    // 2. Generate Nomor Penawaran Resmi (e.g. QUO/SA/202609/015)
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const count = await prisma.project.count();
-    const nextNumber = String(count + 1).padStart(3, '0');
-    const projectNumber = `QUO-SA-${yearMonth}-${nextNumber}`;
+    // 2. Generate Nomor Penawaran Resmi Tanpa Konflik Unik (Collision-Proof)
+    const generateUniqueProjectNumber = async (): Promise<string> => {
+      const now = new Date();
+      const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const prefix = `QUO-SA-${yearMonth}-`;
 
-    // 3. Create Project Header
-    const project = await prisma.project.create({
-      data: {
-        projectNumber,
-        title: payload.projectName || `Penawaran Signage - ${payload.clientName}`,
-        branch: payload.branch || 'jakarta',
-        clientName: payload.clientName,
-        picName: payload.picName || '',
-        clientPhone: cleanPhone,
-        installationAddress: payload.installationAddress || '',
-        status: 'draft',
-        subtotal: payload.subtotal,
-        discountType: payload.discountType || 'fixed',
-        discountValue: payload.discountValue || 0,
-        discountNote: payload.discountNote || '',
-        taxPercent: payload.taxPercent || 0,
-        taxAmount: payload.taxAmount || 0,
-        totalDeal: payload.totalDeal,
-        totalHpp: payload.totalHpp,
-        realProfit: payload.totalDeal - payload.totalHpp,
-        notes: payload.notes || '',
-        toolsChecklist: payload.toolsChecklist ? payload.toolsChecklist : undefined,
-        clientId: customer.id,
-        items: {
-          create: payload.items.map((item) => ({
-            itemType: item.itemType || 'custom',
-            description: item.description,
-            specifications: item.specifications || '',
-            textOrLabel: item.textOrLabel || '',
-            charCount: item.charCount || null,
-            heightCm: item.heightCm || null,
-            widthCm: item.widthCm || null,
-            material: item.material || 'Standar',
-            lighting: item.lighting || 'none',
-            quantity: Number(item.quantity) || 1,
-            unitPrice: Number(item.unitPrice) || 0,
-            sellingPrice: Number(item.sellingPrice) || 0,
-            unitHpp: Number(item.unitHpp) || 0,
-            hppPrice: Number(item.hppPrice) || 0,
-            specSnapshot: item.specSnapshot || null,
-            qcStatus: item.qcStatus || 'PENDING',
-            qcNotes: item.qcNotes || null,
-          })),
+      const existingProjects = await prisma.project.findMany({
+        where: {
+          projectNumber: {
+            startsWith: prefix,
+          },
         },
-      },
-    });
+        select: {
+          projectNumber: true,
+        },
+      });
+
+      let maxSeq = 0;
+      for (const p of existingProjects) {
+        const rawSeq = p.projectNumber.substring(prefix.length);
+        const seq = parseInt(rawSeq, 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+
+      let nextSeq = maxSeq + 1;
+      let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
+      let loopCount = 0;
+      while (await prisma.project.findUnique({ where: { projectNumber: candidate } })) {
+        nextSeq++;
+        candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+        loopCount++;
+        if (loopCount > 100) {
+          candidate = `${prefix}${String(nextSeq).padStart(3, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          break;
+        }
+      }
+
+      return candidate;
+    };
+
+    // 3. Create Project Header dengan proteksi retry jika terjadi konflik unik
+    let project: any;
+    let projectNumber = '';
+    let attempts = 0;
+
+    while (attempts < 5) {
+      try {
+        projectNumber = await generateUniqueProjectNumber();
+        project = await prisma.project.create({
+          data: {
+            projectNumber,
+            title: payload.projectName || `Penawaran Signage - ${payload.clientName}`,
+            branch: payload.branch || 'jakarta',
+            clientName: payload.clientName,
+            picName: payload.picName || '',
+            clientPhone: cleanPhone,
+            installationAddress: payload.installationAddress || '',
+            status: 'draft',
+            subtotal: payload.subtotal,
+            discountType: payload.discountType || 'fixed',
+            discountValue: payload.discountValue || 0,
+            discountNote: payload.discountNote || '',
+            taxPercent: payload.taxPercent || 0,
+            taxAmount: payload.taxAmount || 0,
+            totalDeal: payload.totalDeal,
+            totalHpp: payload.totalHpp,
+            realProfit: payload.totalDeal - payload.totalHpp,
+            notes: payload.notes || '',
+            toolsChecklist: payload.toolsChecklist ? payload.toolsChecklist : undefined,
+            clientId: customer.id,
+            items: {
+              create: payload.items.map((item) => ({
+                itemType: item.itemType || 'custom',
+                description: item.description,
+                specifications: item.specifications || '',
+                textOrLabel: item.textOrLabel || '',
+                charCount: item.charCount || null,
+                heightCm: item.heightCm || null,
+                widthCm: item.widthCm || null,
+                material: item.material || 'Standar',
+                lighting: item.lighting || 'none',
+                quantity: Number(item.quantity) || 1,
+                unitPrice: Number(item.unitPrice) || 0,
+                sellingPrice: Number(item.sellingPrice) || 0,
+                unitHpp: Number(item.unitHpp) || 0,
+                hppPrice: Number(item.hppPrice) || 0,
+                specSnapshot: item.specSnapshot || null,
+                qcStatus: item.qcStatus || 'PENDING',
+                qcNotes: item.qcNotes || null,
+              })),
+            },
+          },
+        });
+        break; // Berhasil tersimpan
+      } catch (err: any) {
+        if (err.code === 'P2002' || (err.message && err.message.includes('projectNumber'))) {
+          attempts++;
+          if (attempts >= 5) throw err;
+          continue;
+        }
+        throw err;
+      }
+    }
 
     revalidatePath('/projects');
     revalidatePath('/dashboard');
