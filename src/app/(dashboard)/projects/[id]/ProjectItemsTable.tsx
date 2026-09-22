@@ -83,7 +83,7 @@ export default function ProjectItemsTable({ items, projectId, isAdmin }: Project
                     <div className="font-extrabold text-slate-900 text-[12.5px]">
                       {item.description}
                     </div>
-                    {item.textOrLabel && (
+                    {item.itemType === 'huruf_timbul' && item.textOrLabel && (
                       <div className="font-mono text-indigo-700 font-bold text-[11px] mt-0.5">
                         &quot;{item.textOrLabel}&quot;
                       </div>

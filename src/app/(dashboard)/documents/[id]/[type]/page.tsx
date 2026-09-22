@@ -188,7 +188,7 @@ export default async function DocumentPage({
                         <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
                         <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
                           {item.description}
-                          {item.textOrLabel && (
+                          {item.itemType === 'huruf_timbul' && item.textOrLabel && (
                             <span className="block font-mono text-slate-800 text-[10px] mt-0.5 font-semibold">
                               Teks: &quot;{item.textOrLabel}&quot;
                             </span>
@@ -213,23 +213,6 @@ export default async function DocumentPage({
                       </tr>
                     );
                   })}
-                  {/* Jasa Instalasi & Perkuatan jika ada item */}
-                  <tr>
-                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">{project.items.length + 1}</td>
-                    <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
-                      Jasa Instalasi & Uji Kelistrikan
-                    </td>
-                    <td className="p-2.5 border-r border-slate-900 text-center font-medium">
-                      Area {branch.city}
-                    </td>
-                    <td className="p-2.5 border-r border-slate-900 text-[11px] text-slate-700">
-                      <p>• Dynabolt perkuatan, bracket siku, perapihan kabel</p>
-                      <p>• Garansi resmi pabrikasi & kelistrikan 1 tahun</p>
-                    </td>
-                    <td className="p-2.5 border-r border-slate-900 text-center font-bold">1 Lot</td>
-                    <td className="p-2.5 border-r border-slate-900 text-right font-semibold text-slate-500">Termasuk</td>
-                    <td className="p-2.5 text-right font-extrabold text-slate-900">Termasuk</td>
-                  </tr>
                 </tbody>
                 <tfoot>
                   {project.discountValue > 0 ? (
@@ -366,7 +349,7 @@ export default async function DocumentPage({
                         <td className="p-2.5 border-r border-slate-900 text-center font-bold">{idx + 1}</td>
                         <td className="p-2.5 border-r border-slate-900 font-bold text-slate-900">
                           {item.description}
-                          {item.textOrLabel && (
+                          {item.itemType === 'huruf_timbul' && item.textOrLabel && (
                             <div className="font-mono text-slate-900 font-bold text-[11px] mt-0.5">
                               Teks: &quot;{item.textOrLabel}&quot;
                             </div>

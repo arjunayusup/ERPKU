@@ -8,6 +8,7 @@ import {
   Calculator,
   EyeOff
 } from 'lucide-react';
+import DashboardRecentProjects from './DashboardRecentProjects';
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
   try {
     projects = await prisma.project.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 15,
       include: {
         items: true,
         expenses: true,
@@ -162,65 +163,8 @@ export default async function DashboardPage() {
       </div>
 
 
-      {/* Recent Projects Table (Clean Light) */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">Pekerjaan Reklame Terbaru</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Pesanan dan status pengerjaan bengkel</p>
-          </div>
-          <a
-            href="/projects"
-            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
-          >
-            Lihat Semua <ArrowUpRight className="w-3.5 h-3.5" />
-          </a>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3">No. Proyek</th>
-                <th className="px-6 py-3">Nama Pekerjaan</th>
-                <th className="px-6 py-3">Klien</th>
-                <th className="px-6 py-3">Status</th>
-                {isAdmin && <th className="px-6 py-3">Nilai Kontrak</th>}
-                <th className="px-6 py-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {projects.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-3.5 font-mono font-bold text-rose-600">{p.projectNumber}</td>
-                  <td className="px-6 py-3.5 font-semibold text-slate-900">{p.title}</td>
-                  <td className="px-6 py-3.5 text-slate-600">{p.clientName}</td>
-                  <td className="px-6 py-3.5">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      p.status === 'ready_install' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                      p.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                      'bg-blue-50 text-blue-700 border border-blue-200'
-                    }`}>
-                      {p.status === 'ready_install' ? 'Siap Dipasang' : p.status === 'completed' ? 'Selesai & Lunas' : 'Pabrikasi'}
-                    </span>
-                  </td>
-                  {isAdmin && (
-                    <td className="px-6 py-3.5 font-bold text-slate-900">{formatRupiah(p.totalDeal)}</td>
-                  )}
-                  <td className="px-6 py-3.5 text-right">
-                    <a
-                      href={`/projects/${p.id}`}
-                      className="inline-block text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition"
-                    >
-                      Buka Rincian
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Recent Projects Table with Search & Esthetic Styling */}
+      <DashboardRecentProjects initialProjects={projects} isAdmin={isAdmin} />
     </div>
   );
 }

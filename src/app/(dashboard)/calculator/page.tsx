@@ -194,18 +194,11 @@ function CalculatorContent() {
 
   // Tiang State
   const [poleHeightMeter, setPoleHeightMeter] = useState<number>(3);
-  const [needPondasi, setNeedPondasi] = useState<boolean>(false);
-  const [pondasiPoints, setPondasiPoints] = useState<number>(1);
 
   // Operasional State
   const [scaffoldingSets, setScaffoldingSets] = useState<number>(2);
   const [scaffoldingDays, setScaffoldingDays] = useState<number>(3);
   const [kabelMeters, setKabelMeters] = useState<number>(20);
-
-  // Metode Dudukan / Konstruksi Inline
-  const [mountType, setMountType] = useState<string>('Tempel Dinding Langsung (Rp 0 - Media Klien)');
-  const [boardAcpLengthCm, setBoardAcpLengthCm] = useState<number>(0);
-  const [boardAcpHeightCm, setBoardAcpHeightCm] = useState<number>(0);
 
   // Free Text Fabrications & Workshop Notes (with Quick Tag Pills)
   const [fabricationNotes, setFabricationNotes] = useState<string>('');
@@ -348,7 +341,7 @@ function CalculatorContent() {
 
       const shapeLabel = boxShape === 'mangkokan' ? 'Mangkokan' : boxShape === 'bulat' ? 'Bulat' : 'Kotak';
       const cleanBoxText = boxText.trim();
-      autoDesc = customItemTitle || (cleanBoxText ? `Neon Box ${shapeLabel} "${cleanBoxText.toUpperCase()}"` : `Neon Box ${shapeLabel} (${selectedMaterial.name})`);
+      autoDesc = customItemTitle || (cleanBoxText ? `Neon Box ${shapeLabel} - ${cleanBoxText.toUpperCase()}` : `Neon Box ${shapeLabel}`);
       autoSpecs = `${selectedMaterial.name} • Dimensi ${w} x ${h} cm (${areaM2.toFixed(2)} m²)`;
 
       ledCount = Math.max(18, Math.ceil(areaM2 * 35));
@@ -365,20 +358,16 @@ function CalculatorContent() {
       unitHpp = Math.round(areaM2 * rateCost);
 
       const cleanFasadText = fasadText.trim();
-      autoDesc = customItemTitle || (cleanFasadText ? `Billboard Fasad "${cleanFasadText.toUpperCase()}"` : `Fasad / Billboard (${selectedMaterial.name})`);
+      autoDesc = customItemTitle || (cleanFasadText ? `Billboard Fasad - ${cleanFasadText.toUpperCase()}` : `Billboard Fasad`);
       autoSpecs = `${selectedMaterial.name} • Dimensi ${len} x ${h} cm (${areaM2.toFixed(2)} m²)`;
 
     } else if (activeCategory === 'tiang') {
       const h = Math.max(0, parseSafeNumber(poleHeightMeter, 3));
-      const pondasiSell = needPondasi ? parseSafeNumber(pondasiPoints, 1) * 850000 : 0;
-      const pondasiHpp = needPondasi ? parseSafeNumber(pondasiPoints, 1) * 500000 : 0;
-      const pondasiText = needPondasi ? ` + Cor Cakar Ayam (${pondasiPoints} Titik)` : '';
+      unitSell = Math.round(h * rateSell);
+      unitHpp = Math.round(h * rateCost);
 
-      unitSell = Math.round(h * rateSell) + pondasiSell;
-      unitHpp = Math.round(h * rateCost) + pondasiHpp;
-
-      autoDesc = customItemTitle || `Konstruksi Tiang ${selectedMaterial.name} (${h}m)${pondasiText}`;
-      autoSpecs = `Pipa Besi Medium, Baseplate & Angkur Dynabolt${pondasiText}`;
+      autoDesc = customItemTitle || `Konstruksi Tiang ${selectedMaterial.name} (${h}m)`;
+      autoSpecs = `Pipa Besi Medium, Baseplate & Angkur Dynabolt`;
 
     } else if (activeCategory === 'operasional') {
       if (selectedMaterial.name.toLowerCase().includes('scaffolding') || selectedMaterial.name.toLowerCase().includes('steger')) {
@@ -401,25 +390,6 @@ function CalculatorContent() {
         autoSpecs = selectedMaterial.notes || 'Pekerjaan operasional lapangan';
       }
     }
-
-    // Hitung tambahan biaya jika memilih Dudukan Board ACP
-    let mountCost = 0;
-    let mountSell = 0;
-    if (mountType.includes('Board ACP')) {
-      const boardW = parseSafeNumber(boardAcpLengthCm, 0);
-      const boardH = parseSafeNumber(boardAcpHeightCm, 0);
-      const boardArea = (boardW * boardH) / 10000;
-      if (boardArea > 0) {
-        mountSell = Math.round(Math.max(1.0, boardArea) * 750000);
-        mountCost = Math.round(Math.max(1.0, boardArea) * 450000);
-      }
-    } else if (mountType.includes('Bracket Pipa')) {
-      mountSell = 150000;
-      mountCost = 85000;
-    }
-
-    unitSell += mountSell;
-    unitHpp += mountCost;
 
     const qty = Math.max(1, parseSafeNumber(quantity, 1));
     const finalHpp = unitHpp * qty;
@@ -456,14 +426,9 @@ function CalculatorContent() {
     fasadLengthCm,
     fasadHeightCm,
     poleHeightMeter,
-    needPondasi,
-    pondasiPoints,
     scaffoldingSets,
     scaffoldingDays,
     kabelMeters,
-    mountType,
-    boardAcpLengthCm,
-    boardAcpHeightCm,
   ]);
 
   // =========================================================================
@@ -529,7 +494,6 @@ function CalculatorContent() {
       charCount: activeCategory === 'huruf_timbul' ? charCount : undefined,
       areaM2: currentPreview.areaM2 || undefined,
       isMinChargeApplied: currentPreview.isMinCharge,
-      mountType,
       fabricationNotes: fabricationNotes.trim(),
       ledCount: currentPreview.ledCount || undefined,
       trafoWatt: currentPreview.trafoWatt || undefined,
@@ -615,7 +579,6 @@ function CalculatorContent() {
 
     setCustomItemTitle(item.description);
     setQuantity(item.quantity || 1);
-    setMountType(snap.mountType || 'Tempel Dinding Langsung (Rp 0 - Media Klien)');
     setFabricationNotes(snap.fabricationNotes || item.qcNotes || '');
 
     inlineFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1229,32 +1192,6 @@ function CalculatorContent() {
                   <span className="absolute right-3.5 top-2.5 font-bold text-slate-400 text-xs">Meter</span>
                 </div>
               </div>
-
-              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={needPondasi}
-                    onChange={(e) => setNeedPondasi(e.target.checked)}
-                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
-                  />
-                  <span>Termasuk Cor Semen Cakar Ayam + Angkur Baseplate (Rp 850.000 / Titik)</span>
-                </label>
-
-                {needPondasi && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-bold">Titik:</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={6}
-                      value={pondasiPoints}
-                      onChange={(e) => setPondasiPoints(Math.max(1, parseSafeNumber(e.target.value, 1)))}
-                      className="w-16 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-bold text-center"
-                    />
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -1308,47 +1245,6 @@ function CalculatorContent() {
               )}
             </div>
           )}
-
-          {/* 3. METODE DUDUKAN / KONSTRUKSI INLINE */}
-          <div className="pt-2 border-t border-slate-200/80 space-y-2 text-xs">
-            <label className="font-bold text-slate-700 block">Metode Dudukan & Penempatan:</label>
-            <select
-              value={mountType}
-              onChange={(e) => setMountType(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-semibold text-slate-900 focus:outline-none"
-            >
-              <option value="Tempel Dinding Langsung (Rp 0 - Media Klien)">Tempel Dinding Langsung (Rp 0 - Media Klien)</option>
-              <option value="Fasad / Board ACP Tambahan">Fasad / Board ACP Tambahan (Hitung Luas)</option>
-              <option value="Tiang Pipa & Pondasi Cor">Tiang Pipa & Pondasi Cor</option>
-              <option value="Bracket Pipa / Menjorok Siku">Bracket Pipa / Menjorok Siku (+Rp 150.000)</option>
-              <option value="Gantung Kawat Seling Baja Indoor">Gantung Kawat Seling Baja Indoor (+Rp 100.000)</option>
-            </select>
-
-            {mountType.includes('Board ACP') && (
-              <div className="p-3 bg-white border border-slate-200 rounded-xl grid grid-cols-2 gap-3 mt-2">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Panjang Board ACP (cm):</label>
-                  <input
-                    type="number"
-                    value={boardAcpLengthCm === 0 ? '' : boardAcpLengthCm}
-                    onChange={(e) => setBoardAcpLengthCm(parseSafeNumber(e.target.value, 0))}
-                    placeholder="Contoh: 300"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Tinggi Board ACP (cm):</label>
-                  <input
-                    type="number"
-                    value={boardAcpHeightCm === 0 ? '' : boardAcpHeightCm}
-                    onChange={(e) => setBoardAcpHeightCm(parseSafeNumber(e.target.value, 0))}
-                    placeholder="Contoh: 100"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* REAL-TIME PREVIEW & ADD ITEM BUTTON */}
@@ -1356,6 +1252,9 @@ function CalculatorContent() {
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-black text-sm text-white tracking-tight">{currentPreview.description}</span>
+              <span className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-800 text-slate-200 border border-slate-700">
+                {selectedMaterial.name}
+              </span>
               {currentPreview.isMinCharge && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
                   Min. 1.0 m²
@@ -1465,7 +1364,7 @@ function CalculatorContent() {
                       <td className="p-3 text-center font-bold text-slate-400">{idx + 1}</td>
                       <td className="p-3">
                         <div className="font-extrabold text-slate-900">{it.description}</div>
-                        {it.textOrLabel && (
+                        {it.itemType === 'huruf_timbul' && it.textOrLabel && (
                           <div className="font-mono text-[11px] text-indigo-700 font-bold mt-0.5">
                             &quot;{it.textOrLabel}&quot;
                           </div>
@@ -1486,9 +1385,6 @@ function CalculatorContent() {
 
                       <td className="p-3 text-[11px] text-slate-600">
                         <p className="font-bold text-slate-900">{it.material}</p>
-                        {snap.mountType && (
-                          <p className="text-slate-500 text-[10px]">Dudukan: {snap.mountType}</p>
-                        )}
                         {snap.fabricationNotes && (
                           <p className="text-rose-700 font-medium italic mt-0.5 bg-rose-50/60 p-1 rounded border border-rose-100">
                             {snap.fabricationNotes}
